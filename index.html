@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derek Leaf 365 Bible Reader (NT Edition)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1b365d">
+</head>
+<body>
+
+  <!-- Top Header & Progress Bar -->
+  <header class="app-header">
+    <div class="header-top">
+      <h1>Derek Leaf NT Plan</h1>
+      <button id="menu-btn" aria-label="Open Progress Menu">☰ Menu</button>
+    </div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progress-bar" style="width: 0%;"></div>
+    </div>
+    <div class="progress-text">
+      <span id="progress-stats">Day 0 of 365 (0%)</span>
+      <button id="mark-read-btn" class="unread-badge">Mark as Read</button>
+    </div>
+  </header>
+
+  <!-- Day Navigation Bar -->
+  <nav class="nav-bar">
+    <button id="prev-day-btn">&larr; Earlier</button>
+    <div class="current-day-display">
+      <span id="day-number-label">Day 1</span>
+      <input type="date" id="start-date-input" title="Set plan start date" />
+    </div>
+    <button id="next-day-btn">Later &rarr;</button>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="content-container">
+    
+    <!-- Passage Header Card -->
+    <section class="passage-card">
+      <h2 id="nt-passage-title">Loading Passage...</h2>
+      <div class="action-toolbar">
+        <button id="toggle-full-chapter-btn" class="tool-btn">📖 Read Full Chapter</button>
+        <button id="toggle-ot-btn" class="tool-btn">📜 View OT Parallels</button>
+        <button id="toggle-translation-btn" class="tool-btn">📖 Vers: WEB</button>
+      </div>
+    </section>
+
+    <!-- Contextual Reading Section (Option D: All of the above) -->
+    <section class="context-section">
+      <div class="context-card" id="historical-context-box">
+        <h3>💡 Historical & Timeline Context</h3>
+        <p id="context-text-body">Loading context...</p>
+      </div>
+      
+      <div class="context-card hidden" id="ot-parallels-box">
+        <h3>🌿 Corresponding Old Testament Readings</h3>
+        <p><strong>Early OT (Pentateuch & Wisdom):</strong> <span id="ot1-text">--</span></p>
+        <p><strong>Late OT (Kings, Prophets & Psalms):</strong> <span id="ot2-text">--</span></p>
+      </div>
+    </section>
+
+    <!-- Scripture Text Display Box -->
+    <section class="scripture-box">
+      <div id="scripture-loading" class="spinner hidden">Loading scripture...</div>
+      <div id="scripture-content">
+        <p class="placeholder-instruction">Select a day or tap 'Mark as Read' to track your progress.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Slide-Out 365-Day Progress Drawer (Starts closed by default) -->
+  <div id="drawer-overlay" class="drawer-overlay hidden"></div>
+  <aside id="progress-drawer" class="drawer closed">
+    <div class="drawer-header">
+      <h2>365-Day Progress Overview</h2>
+      <button id="close-drawer-btn">&times;</button>
+    </div>
+    <div class="drawer-stats-summary">
+      <p id="drawer-completed-count">Completed: 0 / 365</p>
+      <button id="reset-progress-btn" class="danger-btn">Reset Plan</button>
+    </div>
+    <div class="grid-container" id="days-grid">
+      <!-- Generated dynamically by JS -->
+    </div>
+  </aside>
+
+  <!-- Scripts -->
+  <script src="plan-part1.js"></script>
+  <script src="plan-part2a.js"></script>
+  <script src="plan-part2b.js"></script>
+  <script src="context-data.js"></script>
+  <script src="app-core.js"></script>
+  <script src="app-reader.js"></script>
+</body>
+</html>
