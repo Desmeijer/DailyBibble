@@ -106,6 +106,16 @@ function calculateTargetDayIndex() {
 }
 
 // Load a specific day into the UI
+// Helper to generate a direct Enduring Word commentary link from passage string
+function getEnduringWordUrl(passageStr) {
+  if (!passageStr) return "https://enduringword.com/";
+  const parts = passageStr.split(" ")[0].toLowerCase();
+  const match = passageStr.match(/\d+/);
+  const chapter = match ? match[0] : "1";
+  return `https://enduringword.com/bible-commentary/${parts}-${chapter}/`;
+}
+
+// Load a specific day into the UI
 function loadDay(index) {
   currentDayIndex = index;
   const data = ALL_DAYS[index];
@@ -118,6 +128,12 @@ function loadDay(index) {
   contextText.innerHTML = getContextNote(data.nt);
   ot1Text.textContent = data.ot1;
   ot2Text.textContent = data.ot2;
+
+  // Dynamically update the Study Guide button link for today's passage
+  const studyBtn = document.getElementById('study-link-btn');
+  if (studyBtn) {
+    studyBtn.href = getEnduringWordUrl(data.nt);
+  }
 
   // Update Mark as Read button state
   if (completedDays[data.day]) {
@@ -135,6 +151,7 @@ function loadDay(index) {
   
   fetchScripture(data.nt, false);
 }
+
 
 // Update Progress Bar & Stats
 function updateProgressUI() {
