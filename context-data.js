@@ -49,7 +49,7 @@ function getContextNote(ntString) {
   else if (ntString.includes("Jude")) summary = window.CONTEXT_NOTES["Jude"];
   else if (ntString.includes("Revelation")) summary = window.CONTEXT_NOTES["Revelation"];
 
-  const studyUrl = `https://www.blueletterbible.org/search/translationString.cfm?string=${encodeURIComponent(ntString)}`;
+  const studyUrl = `https://www.biblegateway.com/passage/?search=${encodeURIComponent(ntString)}&version=WEB`;
 
   return `
     ${summary}
