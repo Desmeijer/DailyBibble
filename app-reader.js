@@ -226,3 +226,13 @@ function parsePassageString(str) {
   const book = parts.slice(0, parts.length - 1).join(' ') || cleanStr;
   return { book, startChapter: chapter, startVerse: null, endChapter: chapter, endVerse: null };
 }
+// Helper to generate a direct Enduring Word commentary link from passage string
+function getEnduringWordUrl(passageStr) {
+  if (!passageStr) return "https://enduringword.com/";
+  // Clean up passage string (e.g., "Mark 1:1-28" -> "mark/chapter-1/")
+  const parts = passageStr.split(" ")[0].toLowerCase();
+  const match = passageStr.match(/\d+/);
+  const chapter = match ? match[0] : "1";
+  return `https://enduringword.com/bible-commentary/${parts}-${chapter}/`;
+}
+
