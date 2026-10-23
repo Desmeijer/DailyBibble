@@ -154,20 +154,15 @@ function loadDay(index) {
   if (!data) return;
 
   dayLabel.textContent = `Day ${data.day}`;
-  ntTitle.textContent = data.nt;
   
   // Context notes
   contextText.innerHTML = getContextNote(data.nt);
   ot1Text.textContent = data.ot1;
   ot2Text.textContent = data.ot2;
 
-  // Dynamically update the Study Guide button link for today's passage
   const studyBtn = document.getElementById('study-link-btn');
-  if (studyBtn) {
-    studyBtn.href = getEnduringWordUrl(data.nt);
-  }
+  if (studyBtn) studyBtn.href = getEnduringWordUrl(data.nt);
 
-  // Update Mark as Read button state
   if (completedDays[data.day]) {
     markReadBtn.textContent = "✓ Completed";
     markReadBtn.classList.add('completed');
@@ -176,13 +171,14 @@ function loadDay(index) {
     markReadBtn.classList.remove('completed');
   }
 
-  // Reset toggles and fetch scripture
   isFullChapterView = false;
   const fullChapBtn = document.getElementById('toggle-full-chapter-btn');
   if (fullChapBtn) fullChapBtn.textContent = "📖 Read Full Chapter";
-  
-  fetchScripture(data.nt, false);
+
+  // Load passage based on active column selection
+  setActiveColumn(activeColumn);
 }
+
 
 
 // Update Progress Bar & Stats
