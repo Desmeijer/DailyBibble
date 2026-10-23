@@ -81,6 +81,29 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGridDrawer();
   });
 
+  function setActiveColumn(col) {
+  activeColumn = col;
+  
+  // Update button active styling
+  document.getElementById('btn-col-nt').classList.toggle('active-col', col === 'NT');
+  document.getElementById('btn-col-ot1').classList.toggle('active-col', col === 'OT1');
+  document.getElementById('btn-col-ot2').classList.toggle('active-col', col === 'OT2');
+
+  const data = ALL_DAYS[currentDayIndex];
+  if (!data) return;
+
+  if (col === 'NT') {
+    ntTitle.textContent = data.nt;
+    fetchScripture(data.nt, isFullChapterView);
+  } else if (col === 'OT1') {
+    ntTitle.textContent = `OT1: ${data.ot1}`;
+    fetchScripture(data.ot1, isFullChapterView);
+  } else if (col === 'OT2') {
+    ntTitle.textContent = `OT2: ${data.ot2}`;
+    fetchScripture(data.ot2, isFullChapterView);
+  }
+}
+
   // Drawer Toggles
   document.getElementById('menu-btn').addEventListener('click', toggleDrawer);
   document.getElementById('close-drawer-btn').addEventListener('click', toggleDrawer);
