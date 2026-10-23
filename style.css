@@ -180,6 +180,14 @@ body {
   cursor: pointer;
 }
 
+.tool-btn.active-col {
+  background-color: var(--primary, #1b365d);
+  color: white;
+  border-color: var(--primary, #1b365d);
+  font-weight: bold;
+}
+
+
 /* Context Cards */
 .context-section {
   margin-bottom: 16px;
