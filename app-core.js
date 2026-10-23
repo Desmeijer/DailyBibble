@@ -43,13 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
       loadDay(currentDayIndex);
     }
   });
-  startDateInput.addEventListener('change', (e) => {
-    planStartDate = e.target.value;
-    localStorage.setItem('leaf_start_date', planStartDate);
-    currentDayIndex = calculateTargetDayIndex();
-    loadDay(currentDayIndex);
-    renderGridDrawer();
-  });
 
   document.getElementById('next-day-btn').addEventListener('click', () => {
     if (currentDayIndex < ALL_DAYS.length - 1) {
@@ -58,12 +51,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Calendar Date Picker Jump
   startDateInput.addEventListener('change', (e) => {
     planStartDate = e.target.value;
     localStorage.setItem('leaf_start_date', planStartDate);
     currentDayIndex = calculateTargetDayIndex();
     loadDay(currentDayIndex);
+    renderGridDrawer();
   });
+
+  // Column Selection Buttons (NT, OT1, OT2)
+  document.getElementById('btn-col-nt').addEventListener('click', () => setActiveColumn('NT'));
+  document.getElementById('btn-col-ot1').addEventListener('click', () => setActiveColumn('OT1'));
+  document.getElementById('btn-col-ot2').addEventListener('click', () => setActiveColumn('OT2'));
 
   markReadBtn.addEventListener('click', () => {
     const dayNum = currentDayIndex + 1;
@@ -96,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
 
 // Calculate day index based on calendar diff from start date to today
 function calculateTargetDayIndex() {
