@@ -43,6 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
       loadDay(currentDayIndex);
     }
   });
+  startDateInput.addEventListener('change', (e) => {
+    planStartDate = e.target.value;
+    localStorage.setItem('leaf_start_date', planStartDate);
+    currentDayIndex = calculateTargetDayIndex();
+    loadDay(currentDayIndex);
+    renderGridDrawer();
+  });
 
   document.getElementById('next-day-btn').addEventListener('click', () => {
     if (currentDayIndex < ALL_DAYS.length - 1) {
@@ -90,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Calculate day index based on calendar diff from start date
+// Calculate day index based on calendar diff from start date to today
 function calculateTargetDayIndex() {
   const start = new Date(planStartDate);
   const today = new Date();
@@ -104,6 +111,7 @@ function calculateTargetDayIndex() {
   if (diffDays >= ALL_DAYS.length) return ALL_DAYS.length - 1;
   return diffDays;
 }
+
 
 // Load a specific day into the UI
 // Helper to generate a direct Enduring Word commentary link from passage string
