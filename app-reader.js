@@ -47,6 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// Helper to clean API artifact tags (like KJV/NKJV inline lexical or footnote numbers)
+function cleanVerseText(text) {
+  if (!text) return '';
+  return text
+    .replace(/<[^>]*>/g, '') // Strip HTML tags if present
+    .replace(/\[\d+\]/g, '') // Remove bracketed numbers like [1]
+    .replace(/\s+[⁰¹²³⁴⁵⁶⁷⁸⁹]+|\b\d{1,4}[⁰¹²³⁴⁵⁶⁷⁸⁹]+\b/g, '') // Remove superscript / trailing digit artifacts
+    .replace(/\s{2,}/g, ' ') // Normalize spaces
+    .trim();
+}
+
 // Helper to fetch and cache a single chapter from the API safely
 async function fetchChapterData(translation, bookId, chapter) {
   const transCode = translation.toLowerCase(); // Ensure lowercase for Bolls.life API
@@ -73,7 +84,6 @@ async function fetchChapterData(translation, bookId, chapter) {
   }
   throw new Error("No verses returned from API");
 }
-
 
 // Fetch Scripture Passage with Robust Fallback for BBE and Multi-Chapter Spans
 async function fetchScripture(passageStr) {
@@ -105,7 +115,6 @@ async function fetchScripture(passageStr) {
         }
       }
     } catch (primaryErr) {
-      // BBE Fallback: if multi-chapter or specific range fails, try fetching just the base chapter
       if (currentTranslation === 'BBE' && parsed.startChapter) {
         console.warn("BBE multi-chapter fetch failed, attempting single chapter fallback:", primaryErr);
         const fallbackData = await fetchChapterData('BBE', bookId, parsed.startChapter);
@@ -131,7 +140,6 @@ async function fetchScripture(passageStr) {
   }
 }
 
-
 // Render Filtered Verses
 function renderScriptureVerses(verses, parsed) {
   scriptureContainer.innerHTML = '';
@@ -146,7 +154,7 @@ function renderScriptureVerses(verses, parsed) {
   verses.forEach(v => {
     const verseNum = parseInt(v.verse, 10);
     const vChapter = v.chapter || parsed.startChapter;
-    const text = v.text;
+    const text = cleanVerseText(v.text); // Cleaned here
 
     let showVerse = true;
 
@@ -188,7 +196,7 @@ function renderScriptureVerses(verses, parsed) {
     verses.forEach(v => {
       const p = document.createElement('div');
       p.className = 'scripture-verse';
-      p.innerHTML = `<span class="verse-num">${v.chapter ? v.chapter + ':' : ''}${v.verse}</span><span> ${v.text}</span>`;
+      p.innerHTML = `<span class="verse-num">${v.chapter ? v.chapter + ':' : ''}${v.verse}</span><span> ${cleanVerseText(v.text)}</span>`;
       scriptureContainer.appendChild(p);
     });
   }
