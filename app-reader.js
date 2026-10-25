@@ -1,4 +1,4 @@
-// Robust Scripture Fetcher & Renderer: WEB, BBE, NKJV & KJV Translations with OT Support
+// Step 3 (Upgraded): Robust Scripture Fetcher & Renderer: WEB, BBE, NKJV & KJV Translations with OT Support
 
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
@@ -31,14 +31,12 @@ const BIBLE_BOOK_IDS = {
 document.addEventListener('DOMContentLoaded', () => {
   const transSelect = document.getElementById('translation-select');
   if (transSelect) {
-    // Set initial dropdown value from saved state
     transSelect.value = currentTranslation;
 
     transSelect.addEventListener('change', (e) => {
       currentTranslation = e.target.value;
       localStorage.setItem('leaf_translation', currentTranslation);
 
-      // Re-fetch whichever column is currently active (OT1, OT2, or NT)
       if (typeof setActiveColumn === 'function' && typeof activeColumn !== 'undefined') {
         setActiveColumn(activeColumn);
       } else {
@@ -75,7 +73,7 @@ async function fetchChapterData(translation, bookId, chapter) {
   throw new Error("No verses returned from API");
 }
 
-// Fetch Scripture Passage (Supports single chapters, spans, and multi-chapters)
+// Fetch Scripture Passage
 async function fetchScripture(passageStr) {
   if (!scriptureContainer) return;
   if (loadingSpinner) loadingSpinner.classList.remove('hidden');
@@ -92,7 +90,6 @@ async function fetchScripture(passageStr) {
     const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
     allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
 
-    // Fetch subsequent chapters if the reading spans multiple chapters
     if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
       for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
         try {
@@ -110,7 +107,7 @@ async function fetchScripture(passageStr) {
     scriptureContainer.innerHTML = `
       <p class="placeholder-instruction" style="padding: 20px;">
         Unable to load text live for <strong>${passageStr}</strong> (${currentTranslation}).<br><br>
-        <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(currentTranslation)}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline; font-size: 1.05rem;">
+        <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(currentTranslation)}&tab=insights" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline; font-size: 1.05rem;">
           Tap here to read ${passageStr} on Bible Gateway &rarr;
         </a>
       </p>
@@ -138,7 +135,6 @@ function renderScriptureVerses(verses, parsed) {
 
     let showVerse = true;
 
-    // Apply verse filtering when verse boundaries are specified
     if (parsed.startVerse !== null && parsed.endVerse !== null) {
       if (parsed.startChapter === parsed.endChapter) {
         showVerse = (vChapter === parsed.startChapter && verseNum >= parsed.startVerse && verseNum <= parsed.endVerse);
@@ -173,7 +169,6 @@ function renderScriptureVerses(verses, parsed) {
     }
   });
 
-  // Safety fallback: if filtering excluded everything, show all fetched verses
   if (renderedCount === 0) {
     verses.forEach(v => {
       const p = document.createElement('div');
@@ -184,21 +179,18 @@ function renderScriptureVerses(verses, parsed) {
   }
 }
 
-// Passage Parser handling all plan string formats (including single-chapter books and comma-separated Psalms)
+// Robust Passage Parser
 function parsePassageString(str) {
   if (!str) return null;
   const cleanStr = str.trim();
 
-  // Handle comma-separated lists like "Psalms 11, 58-59" -> default to primary first range or block
   if (cleanStr.includes(',')) {
     const firstPart = cleanStr.split(',')[0].trim();
-    // If the first part doesn't contain a chapter (e.g. "Psalms 11, 58-59" -> "Psalms 11"), parse it normally
     if (/\d+/.test(firstPart)) {
       return parsePassageString(firstPart);
     }
   }
 
-  // Handle single-chapter books without explicit chapter numbers (e.g. "2 John", "3 John", "Jude", "Obadiah", "Philemon")
   if (["2 John", "3 John", "Jude", "Obadiah", "Philemon"].some(b => cleanStr.startsWith(b))) {
     const bookMatch = ["2 John", "3 John", "Jude", "Obadiah", "Philemon"].find(b => cleanStr.startsWith(b));
     const remainder = cleanStr.replace(bookMatch, '').trim();
@@ -212,7 +204,6 @@ function parsePassageString(str) {
     };
   }
 
-  // Pattern 1: Cross-chapter verses like "Luke 1:67-2:7" or "Genesis 1:1-2:3"
   const crossMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+):(\d+)-(\d+):(\d+)$/);
   if (crossMatch) {
     return {
@@ -224,7 +215,6 @@ function parsePassageString(str) {
     };
   }
 
-  // Pattern 2: Multi-chapter blocks like "Genesis 1-2" or "Psalms 1-2"
   const multiChapterMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)-(\d+)$/);
   if (multiChapterMatch) {
     return {
@@ -236,7 +226,6 @@ function parsePassageString(str) {
     };
   }
 
-  // Pattern 3: Standard chapter:verse like "Mark 1:1-28" or "Romans 8:1-17"
   const standardMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
   if (standardMatch) {
     const book = standardMatch[1].trim();
@@ -252,43 +241,6 @@ function parsePassageString(str) {
     };
   }
 
-  // Fallback for single whole chapters or whole books
-  const parts = cleanStr.split(' ');
-  const chapter = parseInt(parts[parts.length - 1], 10) || 1;
-  const book = parts.slice(0, parts.length - 1).join(' ') || cleanStr;
-  return { book, startChapter: chapter, startVerse: null, endChapter: chapter, endVerse: null };
-}
-
-
-  // Pattern 2: Multi-chapter blocks like "Genesis 1-2" or "Psalms 1-2"
-  const multiChapterMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)-(\d+)$/);
-  if (multiChapterMatch) {
-    return {
-      book: multiChapterMatch[1].trim(),
-      startChapter: parseInt(multiChapterMatch[2], 10),
-      startVerse: null,
-      endChapter: parseInt(multiChapterMatch[3], 10),
-      endVerse: null
-    };
-  }
-
-  // Pattern 3: Standard chapter:verse like "Mark 1:1-28" or "Romans 8:1-17"
-  const standardMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
-  if (standardMatch) {
-    const book = standardMatch[1].trim();
-    const startChapter = parseInt(standardMatch[2], 10);
-    const startVerse = standardMatch[3] ? parseInt(standardMatch[3], 10) : null;
-    const endVerse = standardMatch[4] ? parseInt(standardMatch[4], 10) : startVerse;
-    return {
-      book,
-      startChapter,
-      startVerse,
-      endChapter: startChapter,
-      endVerse
-    };
-  }
-
-  // Fallback for single whole chapters or whole books
   const parts = cleanStr.split(' ');
   const chapter = parseInt(parts[parts.length - 1], 10) || 1;
   const book = parts.slice(0, parts.length - 1).join(' ') || cleanStr;
