@@ -49,7 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Helper to fetch and cache a single chapter from the API safely
 async function fetchChapterData(translation, bookId, chapter) {
-  const cacheKey = `${translation.toLowerCase()}_id_${bookId}_${chapter}`;
+  const transCode = translation.toLowerCase(); // Ensure lowercase for Bolls.life API
+  const cacheKey = `${transCode}_id_${bookId}_${chapter}`;
   let cached = null;
   try {
     cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
@@ -61,7 +62,7 @@ async function fetchChapterData(translation, bookId, chapter) {
     return cached;
   }
 
-  const url = `https://bolls.life/get-text/${translation}/${bookId}/${chapter}/`;
+  const url = `https://bolls.life/get-text/${transCode}/${bookId}/${chapter}/`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching chapter`);
   
@@ -72,6 +73,7 @@ async function fetchChapterData(translation, bookId, chapter) {
   }
   throw new Error("No verses returned from API");
 }
+
 
 // Fetch Scripture Passage with Robust Fallback for BBE and Multi-Chapter Spans
 async function fetchScripture(passageStr) {
