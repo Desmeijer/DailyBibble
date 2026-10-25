@@ -1,4 +1,4 @@
-// Step 3 (Upgraded): Robust Scripture Fetcher & Renderer: WEB, BBE, NKJV & KJV Translations with OT Support
+// Step 3 (Strict): Robust Scripture Fetcher & Renderer: Strict Version Enforcement
 
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
@@ -58,11 +58,12 @@ function cleanVerseText(text) {
     .trim();
 }
 
-// Helper to fetch and cache a single chapter from the API safely
+// Helper to fetch and cache a single chapter for the strictly requested translation
 async function fetchChapterData(translation, bookId, chapter) {
-  const transCode = translation.toLowerCase(); // Ensure lowercase for Bolls.life API
+  const transCode = translation.toLowerCase(); // bbe, web, kjv, nkjv
   const cacheKey = `${transCode}_id_${bookId}_${chapter}`;
   let cached = null;
+  
   try {
     cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
   } catch (e) {
@@ -75,7 +76,7 @@ async function fetchChapterData(translation, bookId, chapter) {
 
   const url = `https://bolls.life/get-text/${transCode}/${bookId}/${chapter}/`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching chapter`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching chapter for ${transCode}`);
   
   const data = await res.json();
   if (Array.isArray(data) && data.length > 0) {
@@ -85,7 +86,7 @@ async function fetchChapterData(translation, bookId, chapter) {
   throw new Error("No verses returned from API");
 }
 
-// Fetch Scripture Passage with Robust Fallback for BBE and Multi-Chapter Spans
+// Fetch Scripture Passage strictly using currentTranslation without fallbacks
 async function fetchScripture(passageStr) {
   if (!scriptureContainer) return;
   if (loadingSpinner) loadingSpinner.classList.remove('hidden');
@@ -100,27 +101,19 @@ async function fetchScripture(passageStr) {
 
     let allVerses = [];
     
-    try {
-      const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
-      allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
+    // Fetch start chapter
+    const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
+    allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
 
-      if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
-        for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
-          try {
-            const extraData = await fetchChapterData(currentTranslation, bookId, ch);
-            allVerses = allVerses.concat(extraData.map(v => ({ ...v, chapter: ch })));
-          } catch (e) {
-            console.warn(`Could not fetch chapter ${ch}:`, e);
-          }
+    // Fetch subsequent chapters if span crosses multiple chapters
+    if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
+      for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
+        try {
+          const extraData = await fetchChapterData(currentTranslation, bookId, ch);
+          allVerses = allVerses.concat(extraData.map(v => ({ ...v, chapter: ch })));
+        } catch (e) {
+          console.warn(`Could not fetch chapter ${ch}:`, e);
         }
-      }
-    } catch (primaryErr) {
-      if (currentTranslation === 'BBE' && parsed.startChapter) {
-        console.warn("BBE multi-chapter fetch failed, attempting single chapter fallback:", primaryErr);
-        const fallbackData = await fetchChapterData('BBE', bookId, parsed.startChapter);
-        allVerses = fallbackData.map(v => ({ ...v, chapter: parsed.startChapter }));
-      } else {
-        throw primaryErr;
       }
     }
 
@@ -154,7 +147,7 @@ function renderScriptureVerses(verses, parsed) {
   verses.forEach(v => {
     const verseNum = parseInt(v.verse, 10);
     const vChapter = v.chapter || parsed.startChapter;
-    const text = cleanVerseText(v.text); // Cleaned here
+    const text = cleanVerseText(v.text);
 
     let showVerse = true;
 
