@@ -1,16 +1,21 @@
-// Robust Scripture Fetcher & Renderer: WEB & BBE Translations with OT Support
+// Robust Scripture Fetcher & Renderer: WEB, BBE, NKJV & KJV Translations with OT Support
 
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
 
+// Validated supported translations; defaults to WEB if none or invalid is stored
+const SUPPORTED_TRANSLATIONS = ['WEB', 'BBE', 'NKJV', 'KJV'];
 let currentTranslation = localStorage.getItem('leaf_translation') || 'WEB';
+if (!SUPPORTED_TRANSLATIONS.includes(currentTranslation)) {
+  currentTranslation = 'WEB';
+}
 
 const BIBLE_BOOK_IDS = {
   "Genesis": 1, "Exodus": 2, "Leviticus": 3, "Numbers": 4, "Deuteronomy": 5,
   "Joshua": 6, "Judges": 7, "Ruth": 8, "1 Samuel": 9, "2 Samuel": 10,
   "1 Kings": 11, "2 Kings": 12, "1 Chronicles": 13, "2 Chronicles": 14,
   "Ezra": 15, "Nehemiah": 16, "Esther": 17, "Job": 18, "Psalms": 19, "Psalm": 19,
-  "Proverbs": 20, "Ecclesiastes": 21, "Song of Solomon": 22, "Isaiah": 23,
+  "Proverbs": 20, "Ecclesiastes": 21, "Song of Solomon": 22, "Song of Songs": 22, "Isaiah": 23,
   "Jeremiah": 24, "Lamentations": 25, "Ezekiel": 26, "Daniel": 27, "Hosea": 28,
   "Joel": 29, "Amos": 30, "Obadiah": 31, "Jonah": 32, "Micah": 33, "Nahum": 34,
   "Habakkuk": 35, "Zephaniah": 36, "Haggai": 37, "Zechariah": 38, "Malachi": 39,
@@ -22,17 +27,18 @@ const BIBLE_BOOK_IDS = {
   "1 John": 62, "2 John": 63, "3 John": 64, "Jude": 65, "Revelation": 66
 };
 
-// Initialize Translation Button Listener
+// Initialize Translation Dropdown Listener
 document.addEventListener('DOMContentLoaded', () => {
-  const transBtn = document.getElementById('toggle-translation-btn');
-  if (transBtn) {
-    transBtn.textContent = `📖 Vers: ${currentTranslation}`;
-    transBtn.addEventListener('click', () => {
-      currentTranslation = (currentTranslation === 'WEB') ? 'BBE' : 'WEB';
+  const transSelect = document.getElementById('translation-select');
+  if (transSelect) {
+    // Set initial dropdown value from saved state
+    transSelect.value = currentTranslation;
+
+    transSelect.addEventListener('change', (e) => {
+      currentTranslation = e.target.value;
       localStorage.setItem('leaf_translation', currentTranslation);
-      transBtn.textContent = `📖 Vers: ${currentTranslation}`;
-      
-      // Reload current day's active column (NT, OT1, or OT2)
+
+      // Re-fetch whichever column is currently active (OT1, OT2, or NT)
       if (typeof setActiveColumn === 'function' && typeof activeColumn !== 'undefined') {
         setActiveColumn(activeColumn);
       } else {
@@ -104,8 +110,8 @@ async function fetchScripture(passageStr) {
     scriptureContainer.innerHTML = `
       <p class="placeholder-instruction" style="padding: 20px;">
         Unable to load text live for <strong>${passageStr}</strong> (${currentTranslation}).<br><br>
-        <a href="https://www.bible.com/search/results?q=${encodeURIComponent(passageStr + ' ' + currentTranslation)}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline; font-size: 1.05rem;">
-          Tap here to read ${passageStr} on YouVersion &rarr;
+        <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(currentTranslation)}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline; font-size: 1.05rem;">
+          Tap here to read ${passageStr} on Bible Gateway &rarr;
         </a>
       </p>
     `;
