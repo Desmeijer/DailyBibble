@@ -73,7 +73,7 @@ async function fetchChapterData(translation, bookId, chapter) {
   throw new Error("No verses returned from API");
 }
 
-// Fetch Scripture Passage
+// Fetch Scripture Passage with Robust Fallback for BBE and Multi-Chapter Spans
 async function fetchScripture(passageStr) {
   if (!scriptureContainer) return;
   if (loadingSpinner) loadingSpinner.classList.remove('hidden');
@@ -87,17 +87,29 @@ async function fetchScripture(passageStr) {
     if (!bookId) throw new Error(`Book not recognized: ${parsed.book}`);
 
     let allVerses = [];
-    const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
-    allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
+    
+    try {
+      const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
+      allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
 
-    if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
-      for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
-        try {
-          const extraData = await fetchChapterData(currentTranslation, bookId, ch);
-          allVerses = allVerses.concat(extraData.map(v => ({ ...v, chapter: ch })));
-        } catch (e) {
-          console.warn(`Could not fetch chapter ${ch}:`, e);
+      if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
+        for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
+          try {
+            const extraData = await fetchChapterData(currentTranslation, bookId, ch);
+            allVerses = allVerses.concat(extraData.map(v => ({ ...v, chapter: ch })));
+          } catch (e) {
+            console.warn(`Could not fetch chapter ${ch}:`, e);
+          }
         }
+      }
+    } catch (primaryErr) {
+      // BBE Fallback: if multi-chapter or specific range fails, try fetching just the base chapter
+      if (currentTranslation === 'BBE' && parsed.startChapter) {
+        console.warn("BBE multi-chapter fetch failed, attempting single chapter fallback:", primaryErr);
+        const fallbackData = await fetchChapterData('BBE', bookId, parsed.startChapter);
+        allVerses = fallbackData.map(v => ({ ...v, chapter: parsed.startChapter }));
+      } else {
+        throw primaryErr;
       }
     }
 
@@ -116,6 +128,7 @@ async function fetchScripture(passageStr) {
     if (loadingSpinner) loadingSpinner.classList.add('hidden');
   }
 }
+
 
 // Render Filtered Verses
 function renderScriptureVerses(verses, parsed) {
