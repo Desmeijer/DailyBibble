@@ -1,5 +1,5 @@
-// Step 7: Service Worker for Offline PWA Support (v2)
-const CACHE_NAME = 'leaf-bible-v2';
+// Step 7: Service Worker for Offline PWA Support (v3)
+const CACHE_NAME = 'leaf-bible-v3';
 const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
@@ -22,7 +22,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate: Clean up old cache buckets (like leaf-bible-v1) and claim clients
+// Activate: Clean up old cache buckets (like leaf-bible-v1 / v2) and claim clients
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((cacheNames) => {
