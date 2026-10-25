@@ -62,9 +62,10 @@ function setActiveColumn(col) {
     passageToFetch = data.ot2;
   }
 
-  if (typeof fetchScripture === 'function') {
-    fetchScripture(passageToFetch, isFullChapterView);
-  }
+ if (typeof fetchScripture === 'function') {
+  fetchScripture(passageToFetch, false);
+}
+
 }
 
 // Calculate day index based on calendar diff from start date to today
