@@ -1,11 +1,11 @@
-// Step 3 (Strict): Robust Scripture Fetcher & Renderer: Strict Version Enforcement
+// Robust Scripture Fetcher & Clean Renderer: WEB, BBE, NKJV, KJV
 
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
 
 // Validated supported translations; defaults to WEB if none or invalid is stored
 const SUPPORTED_TRANSLATIONS = ['WEB', 'BBE', 'NKJV', 'KJV'];
-let currentTranslation = localStorage.getItem('leaf_translation') || 'WEB';
+let currentTranslation = (localStorage.getItem('leaf_translation') || 'WEB').toUpperCase();
 if (!SUPPORTED_TRANSLATIONS.includes(currentTranslation)) {
   currentTranslation = 'WEB';
 }
@@ -34,9 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
     transSelect.value = currentTranslation;
 
     transSelect.addEventListener('change', (e) => {
-      currentTranslation = e.target.value;
+      currentTranslation = e.target.value.toUpperCase();
       localStorage.setItem('leaf_translation', currentTranslation);
 
+      // Re-fetch active column with the selected translation
       if (typeof setActiveColumn === 'function' && typeof activeColumn !== 'undefined') {
         setActiveColumn(activeColumn);
       } else {
@@ -47,21 +48,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Helper to clean API artifact tags (like KJV/NKJV inline lexical or footnote numbers)
+// Helper to strip API tags, Strong's concordance numbers (<s>...</s>), and bracketed footnotes
 function cleanVerseText(text) {
   if (!text) return '';
   return text
-    .replace(/<[^>]*>/g, '') // Strip HTML tags if present
-    .replace(/\[\d+\]/g, '') // Remove bracketed numbers like [1]
-    .replace(/\s+[⁰¹²³⁴⁵⁶⁷⁸⁹]+|\b\d{1,4}[⁰¹²³⁴⁵⁶⁷⁸⁹]+\b/g, '') // Remove superscript / trailing digit artifacts
-    .replace(/\s{2,}/g, ' ') // Normalize spaces
+    // 1. Remove <s>...</s> tags and the Strong's numbers inside them (KJV/NKJV)
+    .replace(/<s\b[^>]*>[\s\S]*?<\/s>/gi, '')
+    // 2. Remove any orphaned or unclosed <s> tags
+    .replace(/<\/?s\b[^>]*>/gi, '')
+    // 3. Remove footnote references like [1], [a], etc.
+    .replace(/\[\w+\]/g, '')
+    // 4. Remove bracketed Strong's references like {H1234} or {G5678}
+    .replace(/\{[HG]?\d+\}/gi, '')
+    // 5. Remove any other HTML markup (<i>, </i>, <add>, etc.)
+    .replace(/<[^>]*>/g, '')
+    // 6. Clean HTML entities
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&[a-z0-9#]+;/gi, '')
+    // 7. Remove isolated superscript numerals
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '')
+    // 8. Fix spacing before punctuation (e.g. "word , next" -> "word, next")
+    .replace(/\s+([,.;:?!])/g, '$1')
+    // 9. Normalize multiple whitespace characters
+    .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
-// Helper to fetch and cache a single chapter for the strictly requested translation
+// Helper to fetch and cache a single chapter strictly using uppercase translation codes
 async function fetchChapterData(translation, bookId, chapter) {
-  const transCode = translation.toLowerCase(); // bbe, web, kjv, nkjv
-  const cacheKey = `${transCode}_id_${bookId}_${chapter}`;
+  const transCode = translation.toUpperCase();
+  const cacheKey = `leaf_v4_${transCode}_id_${bookId}_${chapter}`;
   let cached = null;
   
   try {
@@ -86,7 +102,7 @@ async function fetchChapterData(translation, bookId, chapter) {
   throw new Error("No verses returned from API");
 }
 
-// Fetch Scripture Passage strictly using currentTranslation without fallbacks
+// Fetch Scripture Passage strictly using the selected translation
 async function fetchScripture(passageStr) {
   if (!scriptureContainer) return;
   if (loadingSpinner) loadingSpinner.classList.remove('hidden');
@@ -105,7 +121,7 @@ async function fetchScripture(passageStr) {
     const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
     allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
 
-    // Fetch subsequent chapters if span crosses multiple chapters
+    // Fetch subsequent chapters if the reading spans multiple chapters
     if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
       for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
         try {
@@ -151,6 +167,7 @@ function renderScriptureVerses(verses, parsed) {
 
     let showVerse = true;
 
+    // Apply verse range filtering if boundaries exist
     if (parsed.startVerse !== null && parsed.endVerse !== null) {
       if (parsed.startChapter === parsed.endChapter) {
         showVerse = (vChapter === parsed.startChapter && verseNum >= parsed.startVerse && verseNum <= parsed.endVerse);
@@ -185,6 +202,7 @@ function renderScriptureVerses(verses, parsed) {
     }
   });
 
+  // Safety fallback: if strict boundary filtering excluded all verses, show chapter text
   if (renderedCount === 0) {
     verses.forEach(v => {
       const p = document.createElement('div');
@@ -200,6 +218,7 @@ function parsePassageString(str) {
   if (!str) return null;
   const cleanStr = str.trim();
 
+  // Comma-separated blocks (e.g., "Psalms 11, 58-59")
   if (cleanStr.includes(',')) {
     const firstPart = cleanStr.split(',')[0].trim();
     if (/\d+/.test(firstPart)) {
@@ -207,6 +226,7 @@ function parsePassageString(str) {
     }
   }
 
+  // Single-chapter books (e.g., "2 John", "3 John", "Jude", "Obadiah", "Philemon")
   if (["2 John", "3 John", "Jude", "Obadiah", "Philemon"].some(b => cleanStr.startsWith(b))) {
     const bookMatch = ["2 John", "3 John", "Jude", "Obadiah", "Philemon"].find(b => cleanStr.startsWith(b));
     const remainder = cleanStr.replace(bookMatch, '').trim();
@@ -220,6 +240,7 @@ function parsePassageString(str) {
     };
   }
 
+  // Pattern 1: Cross-chapter verses (e.g., "Genesis 3:8-4:16", "Luke 1:67-2:7")
   const crossMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+):(\d+)-(\d+):(\d+)$/);
   if (crossMatch) {
     return {
@@ -231,6 +252,7 @@ function parsePassageString(str) {
     };
   }
 
+  // Pattern 2: Multi-chapter blocks (e.g., "Song of Songs 1-2", "Psalms 1-2")
   const multiChapterMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)-(\d+)$/);
   if (multiChapterMatch) {
     return {
@@ -242,6 +264,7 @@ function parsePassageString(str) {
     };
   }
 
+  // Pattern 3: Standard chapter:verse (e.g., "Mark 1:1-28", "Romans 8:1-17")
   const standardMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
   if (standardMatch) {
     const book = standardMatch[1].trim();
@@ -257,6 +280,7 @@ function parsePassageString(str) {
     };
   }
 
+  // Fallback for standalone book or single chapter
   const parts = cleanStr.split(' ');
   const chapter = parseInt(parts[parts.length - 1], 10) || 1;
   const book = parts.slice(0, parts.length - 1).join(' ') || cleanStr;
