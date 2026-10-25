@@ -41,13 +41,19 @@
     <!-- Passage Header Card & Actions Toolbar -->
     <section class="passage-card">
       <h2 id="nt-passage-title">Loading Passage...</h2>
-      <div class="action-toolbar">
-        <button id="btn-col-nt" class="tool-btn active-col">📖 NT</button>
+           <div class="action-toolbar">
         <button id="btn-col-ot1" class="tool-btn">📜 OT1 (Early)</button>
         <button id="btn-col-ot2" class="tool-btn">🌿 OT2 (Late)</button>
-        <button id="toggle-translation-btn" class="tool-btn">📖 Vers: WEB</button>
-        <a id="study-link-btn" href="https://enduringword.com" target="_blank" class="tool-btn" style="text-decoration: none; display: inline-flex; align-items: center;">📚 Study Guide</a>
+        <button id="btn-col-nt" class="tool-btn active-col">📖 NT</button>
+        <a id="study-link-btn" href="https://www.biblegateway.com" target="_blank" class="tool-btn" style="text-decoration: none; display: inline-flex; align-items: center;">📚 Study Guide</a>
+        <select id="translation-select" class="tool-btn version-dropdown" aria-label="Select Bible Version">
+          <option value="WEB">WEB</option>
+          <option value="BBE">BBE</option>
+          <option value="NKJV">NKJV</option>
+          <option value="KJV">KJV</option>
+        </select>
       </div>
+
     </section>
 
     <!-- Contextual Reading Section -->
