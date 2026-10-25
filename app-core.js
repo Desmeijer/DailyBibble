@@ -109,10 +109,6 @@ function loadDay(index) {
     }
   }
 
-  isFullChapterView = false;
-  const fullChapBtn = document.getElementById('toggle-full-chapter-btn');
-  if (fullChapBtn) fullChapBtn.textContent = "📖 Read Full Chapter";
-
   setActiveColumn(activeColumn);
 }
 
