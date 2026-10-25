@@ -181,6 +181,16 @@ body {
 }
 
 .tool-btn.active-col {
+  select.tool-btn {
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  padding: 6px 8px;
+}
+
   background-color: var(--primary, #1b365d);
   color: white;
   border-color: var(--primary, #1b365d);
