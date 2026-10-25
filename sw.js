@@ -1,5 +1,5 @@
-// Step 7: Service Worker for Offline PWA Support
-const CACHE_NAME = 'leaf-bible-v1';
+// Step 7: Service Worker for Offline PWA Support (v2)
+const CACHE_NAME = 'leaf-bible-v2';
 const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
@@ -12,7 +12,9 @@ const ASSETS_TO_CACHE = [
   './manifest.json'
 ];
 
+// Install: Cache all core application assets and activate immediately
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -20,17 +22,31 @@ self.addEventListener('install', (e) => {
   );
 });
 
+// Activate: Clean up old cache buckets (like leaf-bible-v1) and claim clients
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME) {
+            return caches.delete(name);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Fetch: Serve cached assets first, fall back to network, and dynamically cache passages
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       return cachedResponse || fetch(e.request).then((fetchResponse) => {
-        // Cache API responses dynamically
         return caches.open(CACHE_NAME).then((cache) => {
           cache.put(e.request, fetchResponse.clone());
           return fetchResponse;
         });
       }).catch(() => {
-        // Fallback if offline and asset not cached
         if (e.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
