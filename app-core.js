@@ -11,9 +11,7 @@ const ALL_DAYS = [].concat(
 let currentDayIndex = 0; // 0 to 364
 let completedDays = JSON.parse(localStorage.getItem('leaf_completed_days') || '{}');
 let planStartDate = localStorage.getItem('leaf_start_date') || new Date().toISOString().split('T')[0];
-let isFullChapterView = false;
-let isOtVisible = false;
-let activeColumn = 'NT'; // 'NT', 'OT1', or 'OT2'
+let activeColumn = 'NT'; // Default column is NT
 
 // DOM Elements
 const dayLabel = document.getElementById('day-number-label');
@@ -26,13 +24,13 @@ const progressStats = document.getElementById('progress-stats');
 const markReadBtn = document.getElementById('mark-read-btn');
 const startDateInput = document.getElementById('start-date-input');
 
-// Helper: Direct Commentary Link
-function getEnduringWordUrl(passageStr) {
-  if (!passageStr) return "https://enduringword.com/";
-  const parts = passageStr.split(" ")[0].toLowerCase();
-  const match = passageStr.match(/\d+/);
-  const chapter = match ? match[0] : "1";
-  return `https://enduringword.com/bible-commentary/${parts}-${chapter}/`;
+// Helper: Direct Bible Gateway Insights Link for active passage & translation
+function getBibleGatewayUrl(passageStr) {
+  if (!passageStr) return "https://www.biblegateway.com/";
+  const trans = (typeof currentTranslation !== 'undefined')
+    ? currentTranslation
+    : (localStorage.getItem('leaf_translation') || 'WEB');
+  return `https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(trans)}&tab=insights`;
 }
 
 // Set Active Reading Column (NT, OT1, OT2)
@@ -62,10 +60,15 @@ function setActiveColumn(col) {
     passageToFetch = data.ot2;
   }
 
- if (typeof fetchScripture === 'function') {
-  fetchScripture(passageToFetch, false);
-}
+  // Dynamically update Study Guide link for the actively selected column's passage
+  const studyBtn = document.getElementById('study-link-btn');
+  if (studyBtn) {
+    studyBtn.href = getBibleGatewayUrl(passageToFetch);
+  }
 
+  if (typeof fetchScripture === 'function') {
+    fetchScripture(passageToFetch);
+  }
 }
 
 // Calculate day index based on calendar diff from start date to today
@@ -97,9 +100,6 @@ function loadDay(index) {
   if (ot1Text) ot1Text.textContent = data.ot1;
   if (ot2Text) ot2Text.textContent = data.ot2;
 
-  const studyBtn = document.getElementById('study-link-btn');
-  if (studyBtn) studyBtn.href = getEnduringWordUrl(data.nt);
-
   if (markReadBtn) {
     if (completedDays[data.day]) {
       markReadBtn.textContent = "✓ Completed";
@@ -110,6 +110,7 @@ function loadDay(index) {
     }
   }
 
+  // Load the active column (defaults to NT)
   setActiveColumn(activeColumn);
 }
 
@@ -202,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Column Buttons (Safe attachment)
+  // Column Buttons
   const btnNT = document.getElementById('btn-col-nt');
   if (btnNT) btnNT.addEventListener('click', () => setActiveColumn('NT'));
 
