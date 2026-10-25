@@ -184,10 +184,33 @@ function renderScriptureVerses(verses, parsed) {
   }
 }
 
-// Passage Parser handling all plan string formats
+// Passage Parser handling all plan string formats (including single-chapter books and comma-separated Psalms)
 function parsePassageString(str) {
   if (!str) return null;
   const cleanStr = str.trim();
+
+  // Handle comma-separated lists like "Psalms 11, 58-59" -> default to primary first range or block
+  if (cleanStr.includes(',')) {
+    const firstPart = cleanStr.split(',')[0].trim();
+    // If the first part doesn't contain a chapter (e.g. "Psalms 11, 58-59" -> "Psalms 11"), parse it normally
+    if (/\d+/.test(firstPart)) {
+      return parsePassageString(firstPart);
+    }
+  }
+
+  // Handle single-chapter books without explicit chapter numbers (e.g. "2 John", "3 John", "Jude", "Obadiah", "Philemon")
+  if (["2 John", "3 John", "Jude", "Obadiah", "Philemon"].some(b => cleanStr.startsWith(b))) {
+    const bookMatch = ["2 John", "3 John", "Jude", "Obadiah", "Philemon"].find(b => cleanStr.startsWith(b));
+    const remainder = cleanStr.replace(bookMatch, '').trim();
+    const vMatch = remainder.match(/(\d+)(?::-(\d+))?/);
+    return {
+      book: bookMatch,
+      startChapter: 1,
+      startVerse: vMatch ? parseInt(vMatch[1], 10) : null,
+      endChapter: 1,
+      endVerse: vMatch && vMatch[2] ? parseInt(vMatch[2], 10) : (vMatch ? parseInt(vMatch[1], 10) : null)
+    };
+  }
 
   // Pattern 1: Cross-chapter verses like "Luke 1:67-2:7" or "Genesis 1:1-2:3"
   const crossMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+):(\d+)-(\d+):(\d+)$/);
@@ -200,6 +223,42 @@ function parsePassageString(str) {
       endVerse: parseInt(crossMatch[5], 10)
     };
   }
+
+  // Pattern 2: Multi-chapter blocks like "Genesis 1-2" or "Psalms 1-2"
+  const multiChapterMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)-(\d+)$/);
+  if (multiChapterMatch) {
+    return {
+      book: multiChapterMatch[1].trim(),
+      startChapter: parseInt(multiChapterMatch[2], 10),
+      startVerse: null,
+      endChapter: parseInt(multiChapterMatch[3], 10),
+      endVerse: null
+    };
+  }
+
+  // Pattern 3: Standard chapter:verse like "Mark 1:1-28" or "Romans 8:1-17"
+  const standardMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+  if (standardMatch) {
+    const book = standardMatch[1].trim();
+    const startChapter = parseInt(standardMatch[2], 10);
+    const startVerse = standardMatch[3] ? parseInt(standardMatch[3], 10) : null;
+    const endVerse = standardMatch[4] ? parseInt(standardMatch[4], 10) : startVerse;
+    return {
+      book,
+      startChapter,
+      startVerse,
+      endChapter: startChapter,
+      endVerse
+    };
+  }
+
+  // Fallback for single whole chapters or whole books
+  const parts = cleanStr.split(' ');
+  const chapter = parseInt(parts[parts.length - 1], 10) || 1;
+  const book = parts.slice(0, parts.length - 1).join(' ') || cleanStr;
+  return { book, startChapter: chapter, startVerse: null, endChapter: chapter, endVerse: null };
+}
+
 
   // Pattern 2: Multi-chapter blocks like "Genesis 1-2" or "Psalms 1-2"
   const multiChapterMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)-(\d+)$/);
