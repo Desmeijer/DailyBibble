@@ -41,10 +41,11 @@
     <!-- Passage Header Card & Actions Toolbar -->
     <section class="passage-card">
       <h2 id="nt-passage-title">Loading Passage...</h2>
-           <div class="action-toolbar">
+      <div class="action-toolbar">
         <button id="btn-col-ot1" class="tool-btn">📜 OT1 (Early)</button>
         <button id="btn-col-ot2" class="tool-btn">🌿 OT2 (Late)</button>
         <button id="btn-col-nt" class="tool-btn active-col">📖 NT</button>
+        <button id="btn-ai-overview" class="tool-btn">✨ AI Overview</button>
         <a id="study-link-btn" href="https://www.biblegateway.com" target="_blank" class="tool-btn" style="text-decoration: none; display: inline-flex; align-items: center;">📚 Study Guide</a>
         <select id="translation-select" class="tool-btn version-dropdown" aria-label="Select Bible Version">
           <option value="WEB">WEB</option>
@@ -53,14 +54,13 @@
           <option value="KJV">KJV</option>
         </select>
       </div>
-
     </section>
 
     <!-- Contextual Reading Section -->
     <section class="context-section">
-      <div class="context-card" id="historical-context-box">
-        <h3>💡 Historical & Timeline Context</h3>
-        <p id="context-text-body">Loading context...</p>
+      <div class="context-card hidden" id="historical-context-box">
+        <h3 id="context-card-title">✨ AI Passage Overview</h3>
+        <div id="context-text-body">Loading context...</div>
       </div>
       
       <div class="context-card hidden" id="ot-parallels-box">
