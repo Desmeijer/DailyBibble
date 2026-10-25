@@ -12,6 +12,7 @@ let currentDayIndex = 0; // 0 to 364
 let completedDays = JSON.parse(localStorage.getItem('leaf_completed_days') || '{}');
 let planStartDate = localStorage.getItem('leaf_start_date') || new Date().toISOString().split('T')[0];
 let activeColumn = 'NT'; // Default column is NT
+let isAiOverviewVisible = false; // Starts collapsed by default
 
 // DOM Elements
 const dayLabel = document.getElementById('day-number-label');
@@ -60,6 +61,11 @@ function setActiveColumn(col) {
     passageToFetch = data.ot2;
   }
 
+  // Update AI Overview dynamically for whichever column and passage is active
+  if (contextText && typeof getContextNote === 'function') {
+    contextText.innerHTML = getContextNote(passageToFetch, col, data);
+  }
+
   // Dynamically update Study Guide link for the actively selected column's passage
   const studyBtn = document.getElementById('study-link-btn');
   if (studyBtn) {
@@ -94,9 +100,6 @@ function loadDay(index) {
 
   if (dayLabel) dayLabel.textContent = `Day ${data.day}`;
   
-  if (contextText && typeof getContextNote === 'function') {
-    contextText.innerHTML = getContextNote(data.nt);
-  }
   if (ot1Text) ot1Text.textContent = data.ot1;
   if (ot2Text) ot2Text.textContent = data.ot2;
 
@@ -112,6 +115,20 @@ function loadDay(index) {
 
   // Load the active column (defaults to NT)
   setActiveColumn(activeColumn);
+}
+
+// Toggle AI Overview Card Visibility
+function toggleAiOverview() {
+  isAiOverviewVisible = !isAiOverviewVisible;
+  const overviewBox = document.getElementById('historical-context-box');
+  const aiBtn = document.getElementById('btn-ai-overview');
+
+  if (overviewBox) {
+    overviewBox.classList.toggle('hidden', !isAiOverviewVisible);
+  }
+  if (aiBtn) {
+    aiBtn.classList.toggle('active-col', isAiOverviewVisible);
+  }
 }
 
 // Update Progress Bar & Stats
@@ -212,6 +229,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnOT2 = document.getElementById('btn-col-ot2');
   if (btnOT2) btnOT2.addEventListener('click', () => setActiveColumn('OT2'));
+
+  // AI Overview Toggle Button
+  const btnAiOverview = document.getElementById('btn-ai-overview');
+  if (btnAiOverview) {
+    btnAiOverview.addEventListener('click', toggleAiOverview);
+  }
 
   // Mark as Read / Completed Button
   if (markReadBtn) {
