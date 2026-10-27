@@ -1,5 +1,5 @@
-// Service Worker for Offline PWA Support (v7 - Technical Stability & Asset Sync)
-const CACHE_NAME = 'leaf-bible-v7';
+// Service Worker for Offline PWA Support (v8 - UX Upgrades & Dark Mode Sync)
+const CACHE_NAME = 'leaf-bible-v8';
 const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
