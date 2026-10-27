@@ -1,5 +1,4 @@
-// Service Worker for Offline PWA Support (v5 - CEB/ERV Engine Update)
-const CACHE_NAME = 'leaf-bible-v5';
+const CACHE_NAME = 'leaf-bible-v6';
 const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
@@ -9,7 +8,10 @@ const ASSETS_TO_CACHE = [
   './context-data.js',
   './app-core.js',
   './app-reader.js',
-  './manifest.json'
+  './manifest.json',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Install: Cache all core application assets and activate immediately
