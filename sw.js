@@ -1,5 +1,5 @@
-// Service Worker for Offline PWA Support (v4)
-const CACHE_NAME = 'leaf-bible-v4';
+// Service Worker for Offline PWA Support (v5 - CEB/ERV Engine Update)
+const CACHE_NAME = 'leaf-bible-v5';
 const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
@@ -22,7 +22,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate: Clean up old cache buckets (v1, v2, v3) and take control of all open tabs
+// Activate: Purge old cache buckets (v1 through v4) and take immediate control of clients
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -37,7 +37,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch: Serve cached assets first, fall back to network, and dynamically cache passages
+// Fetch: Serve cached assets first, fall back to network, and dynamically cache fetched passages
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
