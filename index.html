@@ -32,7 +32,7 @@
     <button id="prev-day-btn">&larr; Earlier</button>
     <div class="current-day-display">
       <span id="day-number-label">Day 1</span>
-      <input type="date" id="start-date-input" title="Set plan start date" />
+      <span id="current-day-date" class="day-date-label">--</span>
     </div>
     <button id="next-day-btn">Later &rarr;</button>
   </nav>
@@ -49,13 +49,6 @@
         <button id="btn-col-nt" class="tool-btn active-col">📖 NT</button>
         <button id="btn-ai-overview" class="tool-btn">✨ AI Overview</button>
         <a id="study-link-btn" href="https://www.biblegateway.com" target="_blank" class="tool-btn" style="text-decoration: none; display: inline-flex; align-items: center;">📚 Study Guide</a>
-        <select id="translation-select" class="tool-btn version-dropdown" aria-label="Select Bible Version">
-          <option value="CEB">CEB</option>
-          <option value="ERV">ERV</option>
-          <option value="WEB">WEB</option>
-          <option value="NKJV">NKJV</option>
-          <option value="KJV">KJV</option>
-        </select>
       </div>
     </section>
 
@@ -81,13 +74,47 @@
   <div id="drawer-overlay" class="drawer-overlay hidden"></div>
   <aside id="progress-drawer" class="drawer closed">
     <div class="drawer-header">
-      <h2>365-Day Progress Overview</h2>
+      <h2>Menu & Settings</h2>
       <button id="close-drawer-btn">&times;</button>
     </div>
+
+    <!-- Drawer Settings & Configuration Panel -->
+    <div class="drawer-settings-panel">
+      <div class="setting-row">
+        <label for="translation-select">Bible Translation</label>
+        <select id="translation-select" class="drawer-select" aria-label="Select Bible Version">
+          <option value="CEB">CEB</option>
+          <option value="ERV">ERV</option>
+          <option value="WEB">WEB</option>
+          <option value="NKJV">NKJV</option>
+          <option value="KJV">KJV</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="start-date-input">Plan Start Date</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="date" id="start-date-input" class="drawer-input" title="Set plan start date" />
+          <button id="jump-today-btn" class="tool-btn" style="padding: 4px 8px; font-size: 0.8rem;">Today</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="jump-date-input">Jump to Date</label>
+        <input type="date" id="jump-date-input" class="drawer-input" title="Jump to specific calendar date" />
+      </div>
+
+      <div class="setting-row" style="flex-direction: row; justify-content: space-between; align-items: center;">
+        <span>Appearance</span>
+        <button id="theme-toggle-btn" class="tool-btn" style="padding: 6px 12px;">🌙 Dark Mode</button>
+      </div>
+    </div>
+
     <div class="drawer-stats-summary">
       <p id="drawer-completed-count">Completed: 0 / 365</p>
       <button id="reset-progress-btn" class="danger-btn">Reset Plan</button>
     </div>
+    
     <div class="grid-container" id="days-grid">
       <!-- Generated dynamically by JS -->
     </div>
