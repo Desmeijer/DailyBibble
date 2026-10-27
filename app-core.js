@@ -1,4 +1,5 @@
 // Step 6A: Core App Logic, Navigation, Progress Tracker & Drawer
+// Updated with Service Worker Registration & Clean DOM hooks
 
 // Combine dataset parts into a single 365-day array
 const ALL_DAYS = [].concat(
@@ -18,8 +19,6 @@ let isAiOverviewVisible = false; // Starts collapsed by default
 const dayLabel = document.getElementById('day-number-label');
 const ntTitle = document.getElementById('nt-passage-title');
 const contextText = document.getElementById('context-text-body');
-const ot1Text = document.getElementById('ot1-text');
-const ot2Text = document.getElementById('ot2-text');
 const progressBar = document.getElementById('progress-bar');
 const progressStats = document.getElementById('progress-stats');
 const markReadBtn = document.getElementById('mark-read-btn');
@@ -30,7 +29,7 @@ function getBibleGatewayUrl(passageStr) {
   if (!passageStr) return "https://www.biblegateway.com/";
   const trans = (typeof currentTranslation !== 'undefined')
     ? currentTranslation
-    : (localStorage.getItem('leaf_translation') || 'WEB');
+    : (localStorage.getItem('leaf_translation') || 'CEB');
   return `https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(trans)}&tab=insights`;
 }
 
@@ -99,9 +98,6 @@ function loadDay(index) {
   if (!data) return;
 
   if (dayLabel) dayLabel.textContent = `Day ${data.day}`;
-  
-  if (ot1Text) ot1Text.textContent = data.ot1;
-  if (ot2Text) ot2Text.textContent = data.ot2;
 
   if (markReadBtn) {
     if (completedDays[data.day]) {
@@ -179,6 +175,13 @@ function toggleDrawer() {
 
 // Initialize App on Load
 document.addEventListener('DOMContentLoaded', () => {
+  // Register Service Worker for offline capability & PWA installability
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+      .catch(err => console.warn('Service Worker registration skipped/failed:', err));
+  }
+
   if (startDateInput) startDateInput.value = planStartDate;
   
   // Calculate today's scheduled day based on start date
@@ -213,7 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (startDateInput) {
     startDateInput.addEventListener('change', (e) => {
       planStartDate = e.target.value;
-      localStorage.setItem('leaf_start_date', planStartDate);
+      try {
+        localStorage.setItem('leaf_start_date', planStartDate);
+      } catch (err) {
+        console.warn("Could not save start date to localStorage:", err);
+      }
       currentDayIndex = calculateTargetDayIndex();
       loadDay(currentDayIndex);
       renderGridDrawer();
@@ -249,7 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         markReadBtn.textContent = "✓ Completed";
         markReadBtn.classList.add('completed');
       }
-      localStorage.setItem('leaf_completed_days', JSON.stringify(completedDays));
+      try {
+        localStorage.setItem('leaf_completed_days', JSON.stringify(completedDays));
+      } catch (err) {
+        console.warn("Could not save completed days to localStorage:", err);
+      }
       updateProgressUI();
       renderGridDrawer();
     });
