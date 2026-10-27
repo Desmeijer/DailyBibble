@@ -1,5 +1,5 @@
 // Robust Scripture Fetcher & Clean Renderer: CEB (Default), ERV, WEB, NKJV, KJV
-// Updated with localStorage Quota Protection and Multi-Passage (Comma-Separated) Support
+// Upgraded with Multi-Passage Parsing, Quota Protection, and Bottom-of-Page "Next Reading" Bar
 
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
@@ -9,7 +9,9 @@ const SUPPORTED_TRANSLATIONS = ['CEB', 'ERV', 'WEB', 'NKJV', 'KJV'];
 let currentTranslation = (localStorage.getItem('leaf_translation') || 'CEB').toUpperCase();
 if (!SUPPORTED_TRANSLATIONS.includes(currentTranslation)) {
   currentTranslation = 'CEB';
-  localStorage.setItem('leaf_translation', 'CEB');
+  try {
+    localStorage.setItem('leaf_translation', 'CEB');
+  } catch (err) {}
 }
 
 const BIBLE_BOOK_IDS = {
@@ -58,7 +60,6 @@ function safeSetLocalStorage(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (e) {
-    // If quota is exceeded, clear old cached chapters while preserving user plan progress
     console.warn("Storage quota exceeded. Purging cached scripture chapters...");
     try {
       const keysToRemove = [];
@@ -80,26 +81,16 @@ function safeSetLocalStorage(key, value) {
 function cleanVerseText(text) {
   if (!text) return '';
   return text
-    // 1. Remove <s>...</s> tags and the Strong's numbers inside them (KJV/NKJV)
     .replace(/<s\b[^>]*>[\s\S]*?<\/s>/gi, '')
-    // 2. Remove any orphaned or unclosed <s> tags
     .replace(/<\/?s\b[^>]*>/gi, '')
-    // 3. Remove footnote references like [1], [a], etc.
     .replace(/\[\w+\]/g, '')
-    // 4. Remove bracketed Strong's references like {H1234} or {G5678}
     .replace(/\{[HG]?\d+\}/gi, '')
-    // 5. Remove any other HTML markup (<i>, </i>, <add>, etc.)
     .replace(/<[^>]*>/g, '')
-    // 6. Clean HTML entities
     .replace(/&nbsp;/gi, ' ')
     .replace(/&[a-z0-9#]+;/gi, '')
-    // 7. Remove footnote markers (†, ‡, §, ¶)
     .replace(/[\u2020\u2021\u00a7\u00b6]/g, '')
-    // 8. Remove isolated superscript numerals
     .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '')
-    // 9. Fix spacing before punctuation (e.g. "word , next" -> "word, next")
     .replace(/\s+([,.;:?!])/g, '$1')
-    // 10. Normalize multiple whitespace characters
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -133,12 +124,10 @@ async function fetchChapterData(translation, bookId, chapter) {
 }
 
 // Parse a multi-passage string into an array of atomic passage objects
-// Handles comma-separated items like "Psalms 11, 58-59" or "Psalms 130-131, 134-135"
 function splitAndParsePassages(passageStr) {
   if (!passageStr) return [];
   const cleanStr = passageStr.trim();
 
-  // If there are no commas, parse directly as a single item
   if (!cleanStr.includes(',')) {
     const single = parseSinglePassage(cleanStr);
     return single ? [single] : [];
@@ -150,7 +139,6 @@ function splitAndParsePassages(passageStr) {
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
-    // Check if part explicitly contains a known book name
     let detectedBook = null;
     for (const book of Object.keys(BIBLE_BOOK_IDS)) {
       if (part.startsWith(book)) {
@@ -164,7 +152,6 @@ function splitAndParsePassages(passageStr) {
       const parsed = parseSinglePassage(part);
       if (parsed) parsedList.push(parsed);
     } else if (baseBook) {
-      // Re-attach the base book to subsequent chapter/verse lists (e.g. "58-59" -> "Psalms 58-59")
       const parsed = parseSinglePassage(`${baseBook} ${part}`);
       if (parsed) parsedList.push(parsed);
     } else {
@@ -181,7 +168,6 @@ function parseSinglePassage(str) {
   if (!str) return null;
   const cleanStr = str.trim();
 
-  // Single-chapter books
   if (["2 John", "3 John", "Jude", "Obadiah", "Philemon"].some(b => cleanStr.startsWith(b))) {
     const bookMatch = ["2 John", "3 John", "Jude", "Obadiah", "Philemon"].find(b => cleanStr.startsWith(b));
     const remainder = cleanStr.replace(bookMatch, '').trim();
@@ -195,7 +181,6 @@ function parseSinglePassage(str) {
     };
   }
 
-  // Cross-chapter verses (e.g., "Genesis 3:8-4:16")
   const crossMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+):(\d+)-(\d+):(\d+)$/);
   if (crossMatch) {
     return {
@@ -207,7 +192,6 @@ function parseSinglePassage(str) {
     };
   }
 
-  // Multi-chapter blocks (e.g., "Psalms 58-59", "Genesis 1-2")
   const multiChapterMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)-(\d+)$/);
   if (multiChapterMatch) {
     return {
@@ -219,5 +203,172 @@ function parseSinglePassage(str) {
     };
   }
 
-  // Standard chapter:verse (e.g., "Mark 1:1-28", "Psalm 18")
-  const standardMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)(?
+  const standardMatch = cleanStr.match(/^([1-3]?\s?[A-Za-z\s]+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+  if (standardMatch) {
+    const book = standardMatch[1].trim();
+    const startChapter = parseInt(standardMatch[2], 10);
+    const startVerse = standardMatch[3] ? parseInt(standardMatch[3], 10) : null;
+    const endVerse = standardMatch[4] ? parseInt(standardMatch[4], 10) : startVerse;
+    return {
+      book,
+      startChapter,
+      startVerse,
+      endChapter: startChapter,
+      endVerse
+    };
+  }
+
+  const parts = cleanStr.split(' ');
+  const chapter = parseInt(parts[parts.length - 1], 10) || 1;
+  const book = parts.slice(0, parts.length - 1).join(' ') || cleanStr;
+  return { book, startChapter: chapter, startVerse: null, endChapter: chapter, endVerse: null };
+}
+
+// Fetch Scripture Passage strictly using the selected translation
+async function fetchScripture(passageStr) {
+  if (!scriptureContainer) return;
+  if (loadingSpinner) loadingSpinner.classList.remove('hidden');
+  scriptureContainer.innerHTML = '';
+
+  try {
+    const passageList = splitAndParsePassages(passageStr);
+    if (!passageList || passageList.length === 0) {
+      throw new Error("Could not parse passage reference.");
+    }
+
+    const renderedSections = [];
+
+    for (let i = 0; i < passageList.length; i++) {
+      const parsed = passageList[i];
+      const bookId = BIBLE_BOOK_IDS[parsed.book];
+      if (!bookId) throw new Error(`Book not recognized: ${parsed.book}`);
+
+      let allVerses = [];
+      const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
+      allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
+
+      if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
+        for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
+          try {
+            const extraData = await fetchChapterData(currentTranslation, bookId, ch);
+            allVerses = allVerses.concat(extraData.map(v => ({ ...v, chapter: ch })));
+          } catch (e) {
+            console.warn(`Could not fetch chapter ${ch}:`, e);
+          }
+        }
+      }
+
+      renderedSections.push({ verses: allVerses, parsed });
+    }
+
+    renderMultiScriptureSections(renderedSections);
+  } catch (err) {
+    console.warn("Scripture fetch error:", err);
+    scriptureContainer.innerHTML = `
+      <p class="placeholder-instruction" style="padding: 20px;">
+        Unable to load text live for <strong>${passageStr}</strong> (${currentTranslation}).<br><br>
+        <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(currentTranslation)}&tab=insights" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline; font-size: 1.05rem;">
+          Tap here to read ${passageStr} on Bible Gateway &rarr;
+        </a>
+      </p>
+    `;
+  } finally {
+    if (loadingSpinner) loadingSpinner.classList.add('hidden');
+  }
+}
+
+// Render one or multiple scripture sections cleanly and append the bottom navigation footer
+function renderMultiScriptureSections(sections) {
+  scriptureContainer.innerHTML = '';
+  
+  if (!sections || sections.length === 0) {
+    scriptureContainer.innerHTML = `<p class="placeholder-instruction">No verses found for this reading.</p>`;
+    return;
+  }
+
+  sections.forEach((sec) => {
+    const { verses, parsed } = sec;
+
+    if (sections.length > 1) {
+      const subHeader = document.createElement('h3');
+      subHeader.style.cssText = "margin: 20px 0 10px 0; padding-bottom: 4px; border-bottom: 1px solid var(--border); color: var(--primary); font-size: 1.05rem;";
+      subHeader.textContent = (parsed.startChapter === parsed.endChapter)
+        ? `${parsed.book} ${parsed.startChapter}`
+        : `${parsed.book} ${parsed.startChapter}–${parsed.endChapter}`;
+      scriptureContainer.appendChild(subHeader);
+    }
+
+    let renderedCount = 0;
+
+    verses.forEach(v => {
+      const verseNum = parseInt(v.verse, 10);
+      const vChapter = v.chapter || parsed.startChapter;
+      const text = cleanVerseText(v.text);
+
+      let showVerse = true;
+
+      if (parsed.startVerse !== null && parsed.endVerse !== null) {
+        if (parsed.startChapter === parsed.endChapter) {
+          showVerse = (vChapter === parsed.startChapter && verseNum >= parsed.startVerse && verseNum <= parsed.endVerse);
+        } else {
+          if (vChapter === parsed.startChapter) {
+            showVerse = (verseNum >= parsed.startVerse);
+          } else if (vChapter === parsed.endChapter) {
+            showVerse = (verseNum <= parsed.endVerse);
+          } else {
+            showVerse = (vChapter > parsed.startChapter && vChapter < parsed.endChapter);
+          }
+        }
+      }
+
+      if (showVerse) {
+        renderedCount++;
+        const p = document.createElement('div');
+        p.className = 'scripture-verse';
+
+        const spanNum = document.createElement('span');
+        spanNum.className = 'verse-num';
+        spanNum.textContent = (parsed.startChapter !== parsed.endChapter)
+          ? `${vChapter}:${verseNum}`
+          : `${verseNum}`;
+        p.appendChild(spanNum);
+
+        const spanText = document.createElement('span');
+        spanText.innerHTML = ` ${text}`;
+        p.appendChild(spanText);
+
+        scriptureContainer.appendChild(p);
+      }
+    });
+
+    if (renderedCount === 0) {
+      verses.forEach(v => {
+        const p = document.createElement('div');
+        p.className = 'scripture-verse';
+        p.innerHTML = `<span class="verse-num">${v.chapter ? v.chapter + ':' : ''}${v.verse}</span><span> ${cleanVerseText(v.text)}</span>`;
+        scriptureContainer.appendChild(p);
+      });
+    }
+  });
+
+  // Append Bottom Passage Navigation Footer
+  appendScriptureFooter();
+}
+
+// Append bottom navigation footer inside scripture container to prevent long scrolling
+function appendScriptureFooter() {
+  const footerDiv = document.createElement('div');
+  footerDiv.className = 'scripture-footer-nav';
+
+  const dayNum = ALL_DAYS[currentDayIndex] ? ALL_DAYS[currentDayIndex].day : 1;
+  if (!completedCols[dayNum]) completedCols[dayNum] = {};
+  const colStatus = completedCols[dayNum];
+
+  // Mark current column complete state
+  const isCurrentColDone = !!colStatus[activeColumn];
+
+  // Determine next unread column flow: NT -> OT1 -> OT2 -> Complete Day
+  let nextActionLabel = "";
+  let nextTargetCol = null;
+
+  if (activeColumn === 'NT' && !colStatus
