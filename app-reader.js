@@ -1,13 +1,14 @@
-// Robust Scripture Fetcher & Clean Renderer: WEB, BBE, NKJV, KJV
+// Robust Scripture Fetcher & Clean Renderer: CEB (Default), ERV, WEB, NKJV, KJV
 
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
 
-// Validated supported translations; defaults to WEB if none or invalid is stored
-const SUPPORTED_TRANSLATIONS = ['WEB', 'BBE', 'NKJV', 'KJV'];
-let currentTranslation = (localStorage.getItem('leaf_translation') || 'WEB').toUpperCase();
+// Validated supported translations; defaults to CEB if none or invalid is stored
+const SUPPORTED_TRANSLATIONS = ['CEB', 'ERV', 'WEB', 'NKJV', 'KJV'];
+let currentTranslation = (localStorage.getItem('leaf_translation') || 'CEB').toUpperCase();
 if (!SUPPORTED_TRANSLATIONS.includes(currentTranslation)) {
-  currentTranslation = 'WEB';
+  currentTranslation = 'CEB';
+  localStorage.setItem('leaf_translation', 'CEB');
 }
 
 const BIBLE_BOOK_IDS = {
@@ -31,6 +32,7 @@ const BIBLE_BOOK_IDS = {
 document.addEventListener('DOMContentLoaded', () => {
   const transSelect = document.getElementById('translation-select');
   if (transSelect) {
+    // Set initial dropdown value from currentTranslation (CEB default)
     transSelect.value = currentTranslation;
 
     transSelect.addEventListener('change', (e) => {
@@ -65,11 +67,13 @@ function cleanVerseText(text) {
     // 6. Clean HTML entities
     .replace(/&nbsp;/gi, ' ')
     .replace(/&[a-z0-9#]+;/gi, '')
-    // 7. Remove isolated superscript numerals
+    // 7. Remove footnote markers (†, ‡, §, ¶)
+    .replace(/[\u2020\u2021\u00a7\u00b6]/g, '')
+    // 8. Remove isolated superscript numerals
     .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '')
-    // 8. Fix spacing before punctuation (e.g. "word , next" -> "word, next")
+    // 9. Fix spacing before punctuation (e.g. "word , next" -> "word, next")
     .replace(/\s+([,.;:?!])/g, '$1')
-    // 9. Normalize multiple whitespace characters
+    // 10. Normalize multiple whitespace characters
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -77,7 +81,7 @@ function cleanVerseText(text) {
 // Helper to fetch and cache a single chapter strictly using uppercase translation codes
 async function fetchChapterData(translation, bookId, chapter) {
   const transCode = translation.toUpperCase();
-  const cacheKey = `leaf_v4_${transCode}_id_${bookId}_${chapter}`;
+  const cacheKey = `leaf_v5_${transCode}_id_${bookId}_${chapter}`;
   let cached = null;
   
   try {
