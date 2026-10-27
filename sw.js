@@ -1,4 +1,5 @@
-const CACHE_NAME = 'leaf-bible-v6';
+// Service Worker for Offline PWA Support (v7 - Technical Stability & Asset Sync)
+const CACHE_NAME = 'leaf-bible-v7';
 const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
@@ -9,12 +10,12 @@ const ASSETS_TO_CACHE = [
   './app-core.js',
   './app-reader.js',
   './manifest.json',
-  './icon.svg',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.jpg',
+  './icon.jpg'
 ];
 
-// Install: Cache all core application assets and activate immediately
+// Install: Cache all application assets and activate immediately
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
@@ -24,7 +25,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate: Purge old cache buckets (v1 through v4) and take immediate control of clients
+// Activate: Purge old cache buckets and claim clients
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -39,7 +40,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch: Serve cached assets first, fall back to network, and dynamically cache fetched passages
+// Fetch: Cache-first fallback to network, dynamically caching chapter API calls
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
