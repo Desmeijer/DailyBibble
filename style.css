@@ -1,4 +1,4 @@
-/* Styling & Soft Accent Verse Highlight */
+/* Styling & Soft Accent Verse Highlight - Upgraded with Dark Mode & Menu Settings */
 
 :root {
   --primary: #1b365d;
@@ -14,6 +14,20 @@
   --border: #e0e0e0;
 }
 
+body.dark-mode {
+  --primary: #60a5fa;
+  --primary-light: #93c5fd;
+  --accent: #1e293b;
+  --accent-highlight: #334155;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --bg-main: #0f172a;
+  --card-bg: #1e293b;
+  --success: #4ade80;
+  --success-bg: #064e3b;
+  --border: #334155;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -26,6 +40,7 @@ body {
   color: var(--text-main);
   line-height: 1.5;
   padding-bottom: 40px;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Header & Progress Bar */
@@ -37,6 +52,11 @@ body {
   top: 0;
   z-index: 100;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+body.dark-mode .app-header {
+  background-color: #1e293b;
+  border-bottom: 1px solid var(--border);
 }
 
 .header-top {
@@ -106,7 +126,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
+  background: var(--card-bg);
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
 }
@@ -134,12 +154,9 @@ body {
   color: var(--primary);
 }
 
-#start-date-input {
-  border: none;
-  font-size: 0.7rem;
+.day-date-label {
+  font-size: 0.75rem;
   color: var(--text-muted);
-  background: none;
-  cursor: pointer;
 }
 
 /* Main Container & Cards */
@@ -155,6 +172,7 @@ body {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
+  border: 1px solid var(--border);
 }
 
 .passage-card h2 {
@@ -172,7 +190,7 @@ body {
 .tool-btn {
   background: var(--accent);
   color: var(--primary);
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -181,20 +199,14 @@ body {
 }
 
 .tool-btn.active-col {
-  background-color: var(--primary, #1b365d);
+  background-color: var(--primary);
   color: white;
-  border-color: var(--primary, #1b365d);
+  border-color: var(--primary);
   font-weight: bold;
 }
 
-select.tool-btn {
-  border: 1px solid var(--border);
-  background-color: var(--card-bg);
-  color: var(--primary);
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-  padding: 6px 8px;
+body.dark-mode .tool-btn.active-col {
+  color: #0f172a;
 }
 
 /* Context Cards */
@@ -209,6 +221,13 @@ select.tool-btn {
   border-radius: 0 8px 8px 0;
   margin-bottom: 8px;
   font-size: 0.9rem;
+  color: #222;
+}
+
+body.dark-mode .context-card {
+  background: #332900;
+  border-left-color: #eab308;
+  color: #fef08a;
 }
 
 .context-card h3 {
@@ -219,6 +238,10 @@ select.tool-btn {
   padding-bottom: 4px;
 }
 
+body.dark-mode .context-card h3 {
+  color: #fde047;
+}
+
 .ai-lens-grid {
   display: flex;
   flex-direction: column;
@@ -227,7 +250,6 @@ select.tool-btn {
 
 .ai-lens-item {
   line-height: 1.45;
-  color: var(--text-main);
 }
 
 .ai-lens-label {
@@ -248,6 +270,7 @@ select.tool-btn {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   min-height: 200px;
+  border: 1px solid var(--border);
 }
 
 .placeholder-instruction {
@@ -270,7 +293,50 @@ select.tool-btn {
   margin-right: 4px;
 }
 
-/* Drawer Menu */
+/* Bottom Passage Navigation Footer */
+.scripture-footer-nav {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.footer-action-btn, .footer-next-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.footer-action-btn {
+  background: var(--accent);
+  color: var(--primary);
+}
+
+.footer-action-btn.done {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.footer-next-btn {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+body.dark-mode .footer-next-btn {
+  color: #0f172a;
+}
+
+/* Drawer Menu & Settings Panel */
 .drawer-overlay {
   position: fixed;
   top: 0;
@@ -289,7 +355,7 @@ select.tool-btn {
   bottom: 0;
   width: 320px;
   max-width: 85%;
-  background: white;
+  background: var(--card-bg);
   z-index: 201;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
   display: flex;
@@ -310,6 +376,11 @@ select.tool-btn {
   align-items: center;
 }
 
+body.dark-mode .drawer-header {
+  background: #1e293b;
+  border-bottom: 1px solid var(--border);
+}
+
 .drawer-header h2 {
   font-size: 1.1rem;
 }
@@ -322,5 +393,8 @@ select.tool-btn {
   cursor: pointer;
 }
 
-.drawer-stats-summary {
-  padding: 12px 16px
+.drawer-settings-panel {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
