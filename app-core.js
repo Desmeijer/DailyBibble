@@ -1,5 +1,5 @@
 // Step 6A: Core App Logic, Navigation, Progress Tracker & Drawer
-// Updated with Service Worker Registration & Clean DOM hooks
+// Upgraded with Calendar Date Mapping, Date Jump, Dark Mode, and Column Checkmarks
 
 // Combine dataset parts into a single 365-day array
 const ALL_DAYS = [].concat(
@@ -11,18 +11,38 @@ const ALL_DAYS = [].concat(
 // App State
 let currentDayIndex = 0; // 0 to 364
 let completedDays = JSON.parse(localStorage.getItem('leaf_completed_days') || '{}');
+let completedCols = JSON.parse(localStorage.getItem('leaf_completed_cols') || '{}'); // Format: { dayNum: { NT: true, OT1: false, OT2: true } }
 let planStartDate = localStorage.getItem('leaf_start_date') || new Date().toISOString().split('T')[0];
 let activeColumn = 'NT'; // Default column is NT
 let isAiOverviewVisible = false; // Starts collapsed by default
+let isDarkMode = localStorage.getItem('leaf_dark_mode') === 'true';
 
 // DOM Elements
 const dayLabel = document.getElementById('day-number-label');
+const dayDateLabel = document.getElementById('current-day-date');
 const ntTitle = document.getElementById('nt-passage-title');
 const contextText = document.getElementById('context-text-body');
 const progressBar = document.getElementById('progress-bar');
 const progressStats = document.getElementById('progress-stats');
 const markReadBtn = document.getElementById('mark-read-btn');
 const startDateInput = document.getElementById('start-date-input');
+const jumpDateInput = document.getElementById('jump-date-input');
+const jumpTodayBtn = document.getElementById('jump-today-btn');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+
+// Helper: Get formatted calendar date for any 0-364 day index based on plan start date
+function getDateForDayIndex(index) {
+  const start = new Date(planStartDate);
+  start.setDate(start.getDate() + index);
+  return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Helper: Get YYYY-MM-DD string for a day index
+function getDateStringForDayIndex(index) {
+  const start = new Date(planStartDate);
+  start.setDate(start.getDate() + index);
+  return start.toISOString().split('T')[0];
+}
 
 // Helper: Direct Bible Gateway Insights Link for active passage & translation
 function getBibleGatewayUrl(passageStr) {
@@ -33,17 +53,35 @@ function getBibleGatewayUrl(passageStr) {
   return `https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(trans)}&tab=insights`;
 }
 
-// Set Active Reading Column (NT, OT1, OT2)
-function setActiveColumn(col) {
-  activeColumn = col;
-  
+// Update Column Button Badges with Checkmarks
+function updateColumnButtonUI() {
+  const data = ALL_DAYS[currentDayIndex];
+  if (!data) return;
+  const dayNum = data.day;
+  const colStatus = completedCols[dayNum] || {};
+
   const btnNT = document.getElementById('btn-col-nt');
   const btnOT1 = document.getElementById('btn-col-ot1');
   const btnOT2 = document.getElementById('btn-col-ot2');
 
-  if (btnNT) btnNT.classList.toggle('active-col', col === 'NT');
-  if (btnOT1) btnOT1.classList.toggle('active-col', col === 'OT1');
-  if (btnOT2) btnOT2.classList.toggle('active-col', col === 'OT2');
+  if (btnNT) {
+    btnNT.textContent = colStatus.NT ? "📖 NT ✓" : "📖 NT";
+    btnNT.classList.toggle('active-col', activeColumn === 'NT');
+  }
+  if (btnOT1) {
+    btnOT1.textContent = colStatus.OT1 ? "📜 OT1 ✓" : "📜 OT1 (Early)";
+    btnOT1.classList.toggle('active-col', activeColumn === 'OT1');
+  }
+  if (btnOT2) {
+    btnOT2.textContent = colStatus.OT2 ? "🌿 OT2 ✓" : "🌿 OT2 (Late)";
+    btnOT2.classList.toggle('active-col', activeColumn === 'OT2');
+  }
+}
+
+// Set Active Reading Column (NT, OT1, OT2)
+function setActiveColumn(col) {
+  activeColumn = col;
+  updateColumnButtonUI();
 
   const data = ALL_DAYS[currentDayIndex];
   if (!data) return;
@@ -60,12 +98,12 @@ function setActiveColumn(col) {
     passageToFetch = data.ot2;
   }
 
-  // Update AI Overview dynamically for whichever column and passage is active
+  // Update AI Overview dynamically
   if (contextText && typeof getContextNote === 'function') {
     contextText.innerHTML = getContextNote(passageToFetch, col, data);
   }
 
-  // Dynamically update Study Guide link for the actively selected column's passage
+  // Update Study Guide link
   const studyBtn = document.getElementById('study-link-btn');
   if (studyBtn) {
     studyBtn.href = getBibleGatewayUrl(passageToFetch);
@@ -74,6 +112,9 @@ function setActiveColumn(col) {
   if (typeof fetchScripture === 'function') {
     fetchScripture(passageToFetch);
   }
+
+  // Smooth scroll back to top of passage card on column change
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Calculate day index based on calendar diff from start date to today
@@ -98,6 +139,7 @@ function loadDay(index) {
   if (!data) return;
 
   if (dayLabel) dayLabel.textContent = `Day ${data.day}`;
+  if (dayDateLabel) dayDateLabel.textContent = getDateForDayIndex(index);
 
   if (markReadBtn) {
     if (completedDays[data.day]) {
@@ -109,8 +151,8 @@ function loadDay(index) {
     }
   }
 
-  // Load the active column (defaults to NT)
   setActiveColumn(activeColumn);
+  renderGridDrawer();
 }
 
 // Toggle AI Overview Card Visibility
@@ -138,7 +180,7 @@ function updateProgressUI() {
   if (drawerCount) drawerCount.textContent = `Completed: ${completedCount} / 365`;
 }
 
-// Render 365-Day Drawer Grid
+// Render 365-Day Drawer Grid with Mapped Dates
 function renderGridDrawer() {
   const gridContainer = document.getElementById('days-grid');
   if (!gridContainer) return;
@@ -148,6 +190,7 @@ function renderGridDrawer() {
     const dayNum = i + 1;
     const cell = document.createElement('div');
     cell.className = 'grid-day-cell';
+    cell.title = `Day ${dayNum} (${getDateForDayIndex(i)})`;
     cell.textContent = dayNum;
 
     if (completedDays[dayNum]) {
@@ -173,14 +216,25 @@ function toggleDrawer() {
   if (overlay) overlay.classList.toggle('hidden');
 }
 
+// Apply Theme state
+function applyTheme() {
+  document.body.classList.toggle('dark-mode', isDarkMode);
+  if (themeToggleBtn) {
+    themeToggleBtn.textContent = isDarkMode ? "☀️ Light Mode" : "🌙 Dark Mode";
+  }
+}
+
 // Initialize App on Load
 document.addEventListener('DOMContentLoaded', () => {
-  // Register Service Worker for offline capability & PWA installability
+  // Register Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('Service Worker registered successfully:', reg.scope))
       .catch(err => console.warn('Service Worker registration skipped/failed:', err));
   }
+
+  // Apply saved theme
+  applyTheme();
 
   if (startDateInput) startDateInput.value = planStartDate;
   
@@ -212,18 +266,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Calendar Date Picker Jump
+  // Start Date Picker Change
   if (startDateInput) {
     startDateInput.addEventListener('change', (e) => {
       planStartDate = e.target.value;
       try {
         localStorage.setItem('leaf_start_date', planStartDate);
       } catch (err) {
-        console.warn("Could not save start date to localStorage:", err);
+        console.warn("Could not save start date:", err);
       }
       currentDayIndex = calculateTargetDayIndex();
       loadDay(currentDayIndex);
       renderGridDrawer();
+    });
+  }
+
+  // Jump to Today Button
+  if (jumpTodayBtn) {
+    jumpTodayBtn.addEventListener('click', () => {
+      planStartDate = new Date().toISOString().split('T')[0];
+      if (startDateInput) startDateInput.value = planStartDate;
+      try {
+        localStorage.setItem('leaf_start_date', planStartDate);
+      } catch (err) {}
+      currentDayIndex = calculateTargetDayIndex();
+      loadDay(currentDayIndex);
+      renderGridDrawer();
+      toggleDrawer();
+    });
+  }
+
+  // Jump to Specific Date Picker
+  if (jumpDateInput) {
+    jumpDateInput.addEventListener('change', (e) => {
+      const targetDateStr = e.target.value;
+      if (!targetDateStr) return;
+      const targetDate = new Date(targetDateStr);
+      const start = new Date(planStartDate);
+      targetDate.setHours(0,0,0,0);
+      start.setHours(0,0,0,0);
+
+      const diffDays = Math.floor((targetDate - start) / (1000 * 60 * 60 * 24));
+      if (diffDays >= 0 && diffDays < ALL_DAYS.length) {
+        loadDay(diffDays);
+        toggleDrawer();
+      } else {
+        alert("Selected date is outside the 365-day plan window based on your current Start Date.");
+      }
+      jumpDateInput.value = '';
+    });
+  }
+
+  // Theme Toggle Button
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      try {
+        localStorage.setItem('leaf_dark_mode', isDarkMode);
+      } catch (err) {}
+      applyTheme();
     });
   }
 
@@ -246,21 +347,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mark as Read / Completed Button
   if (markReadBtn) {
     markReadBtn.addEventListener('click', () => {
-      const dayNum = currentDayIndex + 1;
+      const data = ALL_DAYS[currentDayIndex];
+      if (!data) return;
+      const dayNum = data.day;
+
       if (completedDays[dayNum]) {
         delete completedDays[dayNum];
+        delete completedCols[dayNum];
         markReadBtn.textContent = "Mark as Read";
         markReadBtn.classList.remove('completed');
       } else {
         completedDays[dayNum] = true;
+        completedCols[dayNum] = { NT: true, OT1: true, OT2: true };
         markReadBtn.textContent = "✓ Completed";
         markReadBtn.classList.add('completed');
       }
       try {
         localStorage.setItem('leaf_completed_days', JSON.stringify(completedDays));
-      } catch (err) {
-        console.warn("Could not save completed days to localStorage:", err);
-      }
+        localStorage.setItem('leaf_completed_cols', JSON.stringify(completedCols));
+      } catch (err) {}
+      
+      updateColumnButtonUI();
       updateProgressUI();
       renderGridDrawer();
     });
@@ -281,10 +388,13 @@ document.addEventListener('DOMContentLoaded', () => {
     resetBtn.addEventListener('click', () => {
       if (confirm("Are you sure you want to reset all progress?")) {
         completedDays = {};
+        completedCols = {};
         localStorage.removeItem('leaf_completed_days');
+        localStorage.removeItem('leaf_completed_cols');
         updateProgressUI();
         renderGridDrawer();
         loadDay(currentDayIndex);
+        updateColumnButtonUI();
       }
     });
   }
