@@ -50,3 +50,84 @@
         <button id="btn-ai-overview" class="tool-btn">✨ AI Overview</button>
         <a id="study-link-btn" href="https://www.biblegateway.com" target="_blank" class="tool-btn" style="text-decoration: none; display: inline-flex; align-items: center;">📚 Study Guide</a>
       </div>
+    </section>
+
+    <!-- Contextual Reading Section -->
+    <section class="context-section">
+      <div class="context-card hidden" id="historical-context-box">
+        <h3 id="context-card-title">✨ AI Passage Overview</h3>
+        <div id="context-text-body">Loading context...</div>
+      </div>
+    </section>
+
+    <!-- Scripture Text Display Box -->
+    <section class="scripture-box">
+      <div id="scripture-loading" class="spinner hidden">Loading scripture...</div>
+      <div id="scripture-content">
+        <p class="placeholder-instruction">Select a day or tap 'Mark as Read' to track your progress.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Slide-Out 365-Day Progress Drawer -->
+  <div id="drawer-overlay" class="drawer-overlay hidden"></div>
+  <aside id="progress-drawer" class="drawer closed">
+    <div class="drawer-header">
+      <h2>Menu & Settings</h2>
+      <button id="close-drawer-btn" aria-label="Close Menu">&times;</button>
+    </div>
+
+    <!-- Compact 2x2 Settings Panel -->
+    <div class="drawer-settings-panel">
+      <div class="settings-grid">
+        <div class="setting-item">
+          <label for="translation-select">Bible Version</label>
+          <select id="translation-select" class="drawer-select" aria-label="Select Bible Version">
+            <option value="CEB">CEB</option>
+            <option value="ERV">ERV</option>
+            <option value="WEB">WEB</option>
+            <option value="NKJV">NKJV</option>
+            <option value="KJV">KJV</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label>Theme</label>
+          <button id="theme-toggle-btn" class="drawer-btn theme-btn">🌙 Dark Mode</button>
+        </div>
+
+        <div class="setting-item">
+          <label for="start-date-input">Plan Start</label>
+          <input type="date" id="start-date-input" class="drawer-input" title="Set plan start date" />
+        </div>
+
+        <div class="setting-item">
+          <label for="jump-date-input">Jump to Date</label>
+          <input type="date" id="jump-date-input" class="drawer-input" title="Jump to specific calendar date" />
+        </div>
+      </div>
+
+      <button id="jump-today-btn" class="drawer-btn today-btn">📅 Jump to Today's Reading</button>
+    </div>
+
+    <!-- Progress Status & Day Grid -->
+    <div class="drawer-stats-summary">
+      <p id="drawer-completed-count">Completed: 0 / 365</p>
+      <button id="reset-progress-btn" class="danger-btn">Reset Plan</button>
+    </div>
+    
+    <div class="grid-container" id="days-grid">
+      <!-- Generated dynamically by JS -->
+    </div>
+  </aside>
+
+  <!-- Scripts (Reader loaded before Core to guarantee fetch functions exist) -->
+  <script src="plan-part1.js"></script>
+  <script src="plan-part2a.js"></script>
+  <script src="plan-part2b.js"></script>
+  <script src="context-data.js"></script>
+  <script src="app-reader.js"></script>
+  <script src="app-core.js"></script>
+</body>
+</html>
