@@ -4,7 +4,7 @@
 const scriptureContainer = document.getElementById('scripture-content');
 const loadingSpinner = document.getElementById('scripture-loading');
 
-// Validated supported translations; defaults to CEB if none or invalid is stored
+// Validated supported translations; defaults to CEB
 const SUPPORTED_TRANSLATIONS = ['CEB', 'ERV', 'WEB', 'NKJV', 'KJV'];
 let currentTranslation = (localStorage.getItem('leaf_translation') || 'CEB').toUpperCase();
 if (!SUPPORTED_TRANSLATIONS.includes(currentTranslation)) {
@@ -13,6 +13,7 @@ if (!SUPPORTED_TRANSLATIONS.includes(currentTranslation)) {
     localStorage.setItem('leaf_translation', 'CEB');
   } catch (err) {}
 }
+window.currentTranslation = currentTranslation;
 
 const BIBLE_BOOK_IDS = {
   "Genesis": 1, "Exodus": 2, "Leviticus": 3, "Numbers": 4, "Deuteronomy": 5,
@@ -35,32 +36,28 @@ const BIBLE_BOOK_IDS = {
 document.addEventListener('DOMContentLoaded', () => {
   const transSelect = document.getElementById('translation-select');
   if (transSelect) {
-    transSelect.value = currentTranslation;
+    transSelect.value = window.currentTranslation;
 
     transSelect.addEventListener('change', (e) => {
-      currentTranslation = e.target.value.toUpperCase();
+      window.currentTranslation = e.target.value.toUpperCase();
       try {
-        localStorage.setItem('leaf_translation', currentTranslation);
-      } catch (err) {
-        console.warn("Could not save translation to localStorage:", err);
-      }
+        localStorage.setItem('leaf_translation', window.currentTranslation);
+      } catch (err) {}
 
-      if (typeof setActiveColumn === 'function' && typeof activeColumn !== 'undefined') {
-        setActiveColumn(activeColumn);
-      } else {
-        const data = (typeof ALL_DAYS !== 'undefined') ? ALL_DAYS[currentDayIndex] : null;
-        if (data) fetchScripture(data.nt);
+      if (typeof window.setActiveColumn === 'function' && typeof window.activeColumn !== 'undefined') {
+        window.setActiveColumn(window.activeColumn);
+      } else if (window.ALL_DAYS && window.ALL_DAYS[window.currentDayIndex]) {
+        window.fetchScripture(window.ALL_DAYS[window.currentDayIndex].nt);
       }
     });
   }
 });
 
-// Helper to safely write to localStorage with automated quota-clearing fallback
+// Storage Quota Safety Helper
 function safeSetLocalStorage(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (e) {
-    console.warn("Storage quota exceeded. Purging cached scripture chapters...");
     try {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -71,13 +68,11 @@ function safeSetLocalStorage(key, value) {
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
       localStorage.setItem(key, value);
-    } catch (innerErr) {
-      console.error("Critical storage failure, skipping local cache write:", innerErr);
-    }
+    } catch (innerErr) {}
   }
 }
 
-// Helper to strip API tags, Strong's concordance numbers, and bracketed footnotes
+// Clean Scripture Text
 function cleanVerseText(text) {
   if (!text) return '';
   return text
@@ -95,7 +90,7 @@ function cleanVerseText(text) {
     .trim();
 }
 
-// Helper to fetch a single chapter with an 8-second timeout to prevent infinite hangs
+// Fetch Single Chapter with 8-second Timeout
 async function fetchChapterData(translation, bookId, chapter) {
   const transCode = translation.toUpperCase();
   const cacheKey = `leaf_v5_${transCode}_id_${bookId}_${chapter}`;
@@ -112,27 +107,27 @@ async function fetchChapterData(translation, bookId, chapter) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   const url = `https://bolls.life/get-text/${transCode}/${bookId}/${chapter}/`;
   try {
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching chapter for ${transCode}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
       safeSetLocalStorage(cacheKey, JSON.stringify(data));
       return data;
     }
-    throw new Error("No verses returned from API");
+    throw new Error("No verses returned");
   } catch (err) {
     clearTimeout(timeoutId);
     throw err;
   }
 }
 
-// Parse a multi-passage string into an array of atomic passage objects
+// Parse Comma-Separated Passages
 function splitAndParsePassages(passageStr) {
   if (!passageStr) return [];
   const cleanStr = passageStr.trim();
@@ -172,7 +167,7 @@ function splitAndParsePassages(passageStr) {
   return parsedList;
 }
 
-// Parse a single atomic passage reference
+// Parse Single Passage
 function parseSinglePassage(str) {
   if (!str) return null;
   const cleanStr = str.trim();
@@ -233,13 +228,15 @@ function parseSinglePassage(str) {
   return { book, startChapter: chapter, startVerse: null, endChapter: chapter, endVerse: null };
 }
 
-// Fetch Scripture Passage strictly using the selected translation
-async function fetchScripture(passageStr) {
+// Globally Exposed Scripture Fetcher
+window.fetchScripture = async function(passageStr) {
   const spinner = document.getElementById('scripture-loading');
   const container = document.getElementById('scripture-content');
   
   if (spinner) spinner.classList.remove('hidden');
   if (container) container.innerHTML = '';
+
+  const activeTrans = window.currentTranslation || 'CEB';
 
   try {
     const passageList = splitAndParsePassages(passageStr);
@@ -255,17 +252,15 @@ async function fetchScripture(passageStr) {
       if (!bookId) throw new Error(`Book not recognized: ${parsed.book}`);
 
       let allVerses = [];
-      const startData = await fetchChapterData(currentTranslation, bookId, parsed.startChapter);
+      const startData = await fetchChapterData(activeTrans, bookId, parsed.startChapter);
       allVerses = allVerses.concat(startData.map(v => ({ ...v, chapter: parsed.startChapter })));
 
       if (parsed.endChapter && parsed.endChapter > parsed.startChapter) {
         for (let ch = parsed.startChapter + 1; ch <= parsed.endChapter; ch++) {
           try {
-            const extraData = await fetchChapterData(currentTranslation, bookId, ch);
+            const extraData = await fetchChapterData(activeTrans, bookId, ch);
             allVerses = allVerses.concat(extraData.map(v => ({ ...v, chapter: ch })));
-          } catch (e) {
-            console.warn(`Could not fetch chapter ${ch}:`, e);
-          }
+          } catch (e) {}
         }
       }
 
@@ -274,30 +269,28 @@ async function fetchScripture(passageStr) {
 
     renderMultiScriptureSections(renderedSections);
   } catch (err) {
-    console.warn("Scripture fetch error:", err);
     if (container) {
       container.innerHTML = `
         <div style="padding: 24px 16px; text-align: center;">
           <p style="color: var(--text-main); font-weight: 600; font-size: 1.05rem; margin-bottom: 8px;">
-            Unable to load text live for <strong>${passageStr}</strong> (${currentTranslation}).
+            Unable to load text live for <strong>${passageStr}</strong> (${activeTrans}).
           </p>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
             The connection to the translation server timed out or was interrupted.
           </p>
-          <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(currentTranslation)}&tab=insights" target="_blank" style="display: inline-block; background: var(--primary); color: white; padding: 10px 18px; border-radius: 6px; font-weight: 600; text-decoration: none; font-size: 0.95rem;">
+          <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(passageStr)}&version=${encodeURIComponent(activeTrans)}&tab=insights" target="_blank" style="display: inline-block; background: var(--primary); color: white; padding: 10px 18px; border-radius: 6px; font-weight: 600; text-decoration: none; font-size: 0.95rem;">
             Read on Bible Gateway &rarr;
           </a>
         </div>
       `;
     }
   } finally {
-    // Unconditionally hide the spinner
     const activeSpinner = document.getElementById('scripture-loading');
     if (activeSpinner) activeSpinner.classList.add('hidden');
   }
-}
+};
 
-// Render one or multiple scripture sections cleanly and append the bottom navigation footer
+// Render Verses
 function renderMultiScriptureSections(sections) {
   const container = document.getElementById('scripture-content');
   if (!container) return;
@@ -376,7 +369,7 @@ function renderMultiScriptureSections(sections) {
   appendScriptureFooter();
 }
 
-// Append bottom navigation footer inside scripture container
+// Append Bottom Navigation Footer
 function appendScriptureFooter() {
   const container = document.getElementById('scripture-content');
   if (!container) return;
@@ -384,20 +377,16 @@ function appendScriptureFooter() {
   const footerDiv = document.createElement('div');
   footerDiv.className = 'scripture-footer-nav';
 
-  const dayData = (typeof ALL_DAYS !== 'undefined' && ALL_DAYS[currentDayIndex])
-    ? ALL_DAYS[currentDayIndex]
+  const dayData = (window.ALL_DAYS && window.ALL_DAYS[window.currentDayIndex])
+    ? window.ALL_DAYS[window.currentDayIndex]
     : { day: 1, nt: '', ot1: '', ot2: '' };
   const dayNum = dayData.day;
 
-  if (typeof completedCols === 'undefined') {
-    window.completedCols = {};
-  }
-  if (!completedCols[dayNum]) {
-    completedCols[dayNum] = {};
-  }
-  const colStatus = completedCols[dayNum];
+  if (!window.completedCols) window.completedCols = {};
+  if (!window.completedCols[dayNum]) window.completedCols[dayNum] = {};
+  const colStatus = window.completedCols[dayNum];
 
-  const currentCol = (typeof activeColumn !== 'undefined') ? activeColumn : 'NT';
+  const currentCol = window.activeColumn || 'NT';
   const isCurrentColDone = !!colStatus[currentCol];
 
   let nextActionLabel = "";
@@ -435,22 +424,22 @@ function appendScriptureFooter() {
     markColBtn.addEventListener('click', () => {
       colStatus[currentCol] = !colStatus[currentCol];
       try {
-        localStorage.setItem('leaf_completed_cols', JSON.stringify(completedCols));
+        localStorage.setItem('leaf_completed_cols', JSON.stringify(window.completedCols));
       } catch (err) {}
 
       if (colStatus.NT && colStatus.OT1 && colStatus.OT2) {
-        completedDays[dayNum] = true;
+        window.completedDays[dayNum] = true;
       } else {
-        delete completedDays[dayNum];
+        delete window.completedDays[dayNum];
       }
       try {
-        localStorage.setItem('leaf_completed_days', JSON.stringify(completedDays));
+        localStorage.setItem('leaf_completed_days', JSON.stringify(window.completedDays));
       } catch (err) {}
 
-      if (typeof updateColumnButtonUI === 'function') updateColumnButtonUI();
-      if (typeof updateProgressUI === 'function') updateProgressUI();
-      if (typeof renderGridDrawer === 'function') renderGridDrawer();
-      if (typeof loadDay === 'function') loadDay(currentDayIndex);
+      if (typeof window.updateColumnButtonUI === 'function') window.updateColumnButtonUI();
+      if (typeof window.updateProgressUI === 'function') window.updateProgressUI();
+      if (typeof window.renderGridDrawer === 'function') window.renderGridDrawer();
+      if (typeof window.loadDay === 'function') window.loadDay(window.currentDayIndex);
     });
   }
 
@@ -458,30 +447,32 @@ function appendScriptureFooter() {
     nextBtn.addEventListener('click', () => {
       colStatus[currentCol] = true;
       try {
-        localStorage.setItem('leaf_completed_cols', JSON.stringify(completedCols));
+        localStorage.setItem('leaf_completed_cols', JSON.stringify(window.completedCols));
       } catch (err) {}
 
       if (colStatus.NT && colStatus.OT1 && colStatus.OT2) {
-        completedDays[dayNum] = true;
+        window.completedDays[dayNum] = true;
       }
       try {
-        localStorage.setItem('leaf_completed_days', JSON.stringify(completedDays));
+        localStorage.setItem('leaf_completed_days', JSON.stringify(window.completedDays));
       } catch (err) {}
 
       if (nextTargetCol === 'DONE') {
-        if (typeof ALL_DAYS !== 'undefined' && currentDayIndex < ALL_DAYS.length - 1) {
-          currentDayIndex++;
-          if (typeof loadDay === 'function') loadDay(currentDayIndex);
+        if (window.ALL_DAYS && window.currentDayIndex < window.ALL_DAYS.length - 1) {
+          window.currentDayIndex++;
+          if (typeof window.loadDay === 'function') window.loadDay(window.currentDayIndex);
         } else {
           alert("Congratulations! You have completed the 365-day reading plan!");
         }
       } else {
-        if (typeof setActiveColumn === 'function') setActiveColumn(nextTargetCol);
+        if (typeof window.setActiveColumn === 'function') window.setActiveColumn(nextTargetCol);
       }
 
-      if (typeof updateColumnButtonUI === 'function') updateColumnButtonUI();
-      if (typeof updateProgressUI === 'function') updateProgressUI();
-      if (typeof renderGridDrawer === 'function') renderGridDrawer();
+      if (typeof window.updateColumnButtonUI === 'function') window.updateColumnButtonUI();
+      if (typeof window.updateProgressUI === 'function') window.updateProgressUI();
+      if (typeof window.renderGridDrawer === 'function') window.renderGridDrawer();
     });
   }
 }
+
+// === END OF app-reader.js ===
